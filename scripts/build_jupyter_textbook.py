@@ -81,7 +81,7 @@ def _lesson(
             f"""
 # {number}장. {title}
 
-| 핵심 질문 | 학습 시간 |
+| 오늘의 질문 | 예상 시간 |
 |---|---:|
 | {question} | {session} · 약 {minutes}분 |
 """
@@ -136,16 +136,16 @@ def _lesson(
 
 {exercise_text}
 
-먼저 기본값으로 실행한 뒤 한 곳만 바꾸어 결과를 비교합니다.
+먼저 기본값으로 한 번 실행하세요. 그다음 표시된 값 하나만 바꾸고, 달라진 결과를 아래에 적습니다.
 """,
                 role="inquiry",
             ),
             _code(exercise_code, tags=["student-exercise"]),
             _markdown(
-                "### 관찰 기록\n\n"
-                "- 바꾼 것:  \n"
-                "- 달라진 결과:  \n"
-                "- 그렇게 된 까닭:  ",
+                "### 내가 본 변화\n\n"
+                "- 내가 바꾼 값:  \n"
+                "- 화면에서 달라진 것:  \n"
+                "- 내 설명:  ",
                 role="observation",
             ),
             _markdown(
@@ -167,7 +167,7 @@ def _lesson(
             _markdown(
                 "## 핵심 정리\n\n"
                 + "\n".join(f"- {item}" for item in summary)
-                + f"\n\n### 다음 장에서 배울 내용\n\n{next_text}",
+                + f"\n\n### 다음 장\n\n{next_text}",
                 role="summary",
             ),
             _code(
@@ -212,7 +212,7 @@ for candidate in (current_folder, *current_folder.parents):
         break
 else:
     raise RuntimeError(
-        "프로젝트 폴더를 찾지 못했습니다. neis-meal-ai 폴더에서 "
+        "프로젝트 폴더를 찾지 못했습니다. 프로젝트 최상위 폴더에서 "
         r".\\.venv\\Scripts\\python.exe -m notebook 명령으로 다시 시작하세요."
     )
 
@@ -236,16 +236,16 @@ def _chapter_00() -> dict:
     return _lesson(
         number="00",
         title="설치 확인과 Jupyter 시작하기",
-        question="가상환경과 Jupyter는 왜 필요하고 설치가 잘 되었는지 어떻게 확인할까?",
+        question="가상환경과 Jupyter가 제대로 준비되었는지 어떻게 확인할까?",
         session="1회차 전반",
         minutes=70,
         objectives=[
-            "가상환경을 프로젝트 전용 공구함에 비유해 설명할 수 있다.",
+            "가상환경이 필요한 까닭을 설명할 수 있다.",
             "requirements의 패키지를 설치하고 Jupyter를 실행하는 명령 순서를 말할 수 있다.",
             "Markdown 셀과 Code 셀의 차이를 말할 수 있다.",
             "현재 Python·Notebook·핵심 패키지 버전을 확인할 수 있다.",
         ],
-        connection="새 학기 첫 실습 시간입니다. 같은 코드를 실행했는데 친구의 화면과 내 화면이 다르다면 수업을 이어 가기 어렵습니다. `00_설치_준비.md`를 따라 만든 `.venv`가 모두에게 같은 실습 환경을 마련해 주는지 확인해 봅시다.",
+        connection="`00_설치_준비.md`의 설치를 마쳤다면 이 노트북이 프로젝트의 `.venv`에서 실행되고 있는지 확인합니다. Python과 패키지 버전이 맞아야 뒤의 여덟 장도 같은 결과를 낼 수 있습니다.",
         keywords=[
             ("가상환경", "이 프로젝트에 필요한 Python 패키지만 따로 담는 폴더"),
             ("requirements", "설치할 패키지와 허용 버전을 한 줄씩 적은 목록"),
@@ -278,7 +278,7 @@ def _chapter_00() -> dict:
 
 `.\\.venv\\Scripts\\python.exe -m notebook`을 실행하고 PowerShell 창을 열어 둡니다. 브라우저가 열리면 이 0장으로 들어옵니다.
 
-`notebook`은 전자 교과서 화면, `ipykernel`은 Code 셀을 계산하는 엔진, `ipywidgets`는 06장의 입력 상자와 버튼입니다. `pandas`와 `numpy`는 급식 표와 숫자, `matplotlib`은 그래프, `requests`는 NEIS 통신을 맡습니다. 이것이 **각 패키지가 하는 일**입니다.
+`notebook`은 Jupyter 화면을 열고, `ipykernel`은 Code 셀을 실행합니다. `ipywidgets`는 06장의 입력 상자와 버튼을 만듭니다. `pandas`와 `numpy`는 급식 표와 숫자를 다루며, `matplotlib`은 그래프를 그리고 `requests`는 NEIS에 데이터를 요청합니다. 이것이 **각 패키지가 하는 일**입니다.
 
 Jupyter Notebook은 **설명 페이지와 실험실이 한 화면에 붙어 있는 전자 교과서**입니다. Markdown 셀은 교과서의 설명이고, Code 셀은 직접 눌러 보는 실험 장치입니다.
 
@@ -393,7 +393,7 @@ def _chapter_01() -> dict:
             "JSON에서 키와 값을 구분할 수 있다.",
             "학교명보다 학교 코드가 정확한 식별값인 이유를 말할 수 있다.",
         ],
-        connection="점심시간 전, 친구가 ‘오늘 급식 뭐야?’라고 물었습니다. 학교 누리집을 사람이 직접 찾아볼 수도 있지만, 프로그램은 정해진 주소와 조건을 이용해 급식 정보를 받아옵니다. 그 공식 창구가 NEIS API입니다.",
+        connection="사람은 학교 급식표를 화면에서 읽지만 프로그램은 정해진 주소와 조건으로 데이터를 요청합니다. NEIS API에 학교 코드와 날짜를 보내고, 돌아온 JSON에서 메뉴를 찾습니다.",
         keywords=[
             ("API", "다른 서비스에 정해진 규칙으로 데이터를 요청하는 창구"),
             ("요청", "주소와 조건을 서버에 보내는 일"),
@@ -659,7 +659,7 @@ def _chapter_03() -> dict:
     return _lesson(
         number="03",
         title="TF-IDF — 글자를 숫자로",
-        question="AI는 메뉴 글자를 어떻게 숫자로 바꿀까?",
+        question="컴퓨터는 메뉴 글자를 어떻게 숫자로 바꿀까?",
         session="3회차 전반",
         minutes=90,
         objectives=[
@@ -1203,7 +1203,7 @@ def _chapter_07() -> dict:
     return _lesson(
         number="07",
         title="테스트와 모델 카드",
-        question="우리 AI를 어떻게 시험하고 한계를 공개할까?",
+        question="추천기를 어떻게 시험하고 한계를 설명할까?",
         session="5회차",
         minutes=180,
         objectives=[
@@ -1211,7 +1211,7 @@ def _chapter_07() -> dict:
             "입력을 바꾼 네 가지 사례로 추천 규칙을 확인할 수 있다.",
             "모델 카드에 목적·데이터·방법·한계·금지 사용을 기록할 수 있다.",
         ],
-        connection="추천 버튼이 한 번 잘 작동했다고 해서 모든 경우가 안전한 것은 아닙니다. 취향을 비워 두거나 범위를 벗어난 값을 넣었을 때도 예상한 결과가 나오는지 확인해야 합니다. 시험 결과와 함께 할 수 없는 일도 기록해 봅시다.",
+        connection="추천 버튼이 한 번 작동한 것만으로는 충분하지 않습니다. 취향이 비어 있거나 범위를 벗어난 값이 들어왔을 때도 정해 둔 방식으로 움직이는지 확인합니다. 모델 카드에는 시험 결과와 함께 이 추천기가 하지 못하는 일도 적습니다.",
         keywords=[
             ("테스트 사례", "특정 입력과 예상 결과를 짝지은 시험"),
             ("회귀", "고친 기능이 이후 변경으로 다시 망가지는 현상"),
@@ -1347,7 +1347,7 @@ def _chapter_08() -> dict:
         concept="""
 좋은 AI 발표는 ‘1위 메뉴가 이것입니다’에서 끝나지 않습니다. 어떤 문제를 골랐고, 데이터가 어디에서 왔고, 글자가 어떻게 숫자가 되었고, 추천 이유를 어떻게 시험했는지 보여 줍니다.
 
-결과가 예상과 다르더라도 숨기지 않습니다. 왜 그런 결과가 나왔는지 데이터와 규칙으로 설명하면 중요한 학습 근거가 됩니다.
+결과가 예상과 다르더라도 지우지 않습니다. 왜 그런 결과가 나왔는지 데이터와 규칙으로 설명하면 발표의 좋은 근거가 됩니다.
 """,
         hand_example="""
 친구에게 30초 안에 API, TF-IDF, 추천 점수 중 하나를 설명해 보세요. 전문 용어를 말한 뒤 바로 생활 속 비유를 붙이면 이해하기 쉬워집니다.
@@ -1429,7 +1429,7 @@ print("근거:", evidence_sentence)
             "시연 전에는 새 커널 실행과 가상 입력 원칙을 확인한다.",
             "체험 결과를 순위만이 아니라 추천 이유와 함께 기록한다.",
         ],
-        next_text="모든 장을 마쳤습니다. 개인 회고에는 내가 직접 바꾼 입력, 예상과 달랐던 결과, 설명할 수 있게 된 개념을 기록합니다.",
+        next_text="여기까지 실행했다면 프로젝트가 끝났습니다. 내가 직접 바꾼 입력, 예상과 달랐던 결과, 이제 설명할 수 있는 개념을 회고에 남깁니다.",
     )
 
 
@@ -1455,6 +1455,7 @@ def build_textbook(output_dir: str | Path = DEFAULT_OUTPUT) -> list[Path]:
         path.write_text(
             json.dumps(builder(), ensure_ascii=False, indent=1),
             encoding="utf-8",
+            newline="\n",
         )
         paths.append(path)
     return paths
