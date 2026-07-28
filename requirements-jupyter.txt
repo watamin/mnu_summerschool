@@ -1,0 +1,16 @@
+# 데이터 처리
+numpy>=1.24,<3
+pandas>=2.0,<4
+
+# 그래프와 NEIS 통신
+matplotlib>=3.7,<4
+requests>=2.31,<3
+
+# Jupyter 실행과 화면 위젯
+notebook>=7.2,<8
+ipykernel>=6.25,<8
+ipywidgets>=8.1,<9
+
+# 교사용 노트북 실행 검증
+nbformat>=5.10,<6
+nbclient>=0.10,<1

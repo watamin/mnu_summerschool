@@ -1,0 +1,10 @@
+.venv/
+.testdeps/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+notebooks/.executed/
+jupyter_course/.ipynb_checkpoints/
+jupyter_course/chapters/.ipynb_checkpoints/
+verification/
