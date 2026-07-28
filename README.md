@@ -1,73 +1,24 @@
-# 우리 학교 급식 데이터 AI 탐험대
+# 우리 학교 급식으로 배우는 AI 추천
 
-남악고등학교 NEIS 공개 급식 데이터와 익명 취향 입력을 이용해 개인별 메뉴를 추천하는 중학교 2학년용 15시간 프로젝트입니다. 3시간씩 5회 동안 제작하고, 6회차 3시간은 발표와 상호 체험에 사용합니다.
+매일 보는 급식표도 좋은 데이터가 됩니다. 이 수업에서는 남악고등학교의 NEIS 급식 데이터를 불러와 정리하고, 각자 만든 가상 취향과 메뉴를 비교해 추천 순위를 만듭니다.
 
-## 권장 수업판: 분할 Jupyter 교과서
+대상은 코딩 기초를 조금 배운 중학교 2학년 학생입니다. 6명이 각자 PC를 사용하며 3시간씩 6회 진행합니다. 추천기는 5회차에 마무리하고, 6회차에는 발표와 체험만 합니다.
 
-설명이 충분하고 학생이 장별로 따라 하기 쉬운 새 판은 `jupyter_course/README.md`에서 시작합니다.
+## 무엇을 만들까요?
 
-- 00~08의 9개 노트북으로 분할
-- 각 장마다 개념·비유·예상 결과·코드 해설·학생 실습·학습 확인·정리 제공
-- 로컬 Jupyter Notebook 7과 ipywidgets 사용
-- 외부 공유 링크 없이 현재 PC에서 추천 화면 실행
-- 역할 분담표나 점수식 평가표 없이 학습 결과와 설명으로 확인
+학생은 이름이나 학번 대신 다음과 같은 가상 취향을 입력합니다.
 
-처음에는 `jupyter_course/00_설치_준비.md`를 열어 가상환경 생성과 requirements 설치 명령을 한 줄씩 실행합니다. 기존 단일 Colab 노트북은 백업·비교용으로 그대로 보존되어 있습니다.
-
-## 내일 검토할 파일
-
-1. `jupyter_course/00_설치_준비.md` — 가상환경·requirements·Jupyter 수동 설치
-2. `jupyter_course/README.md` — 학생용 실행·학습 안내
-3. `jupyter_course/chapters/00_시작하기.ipynb` — 설치 확인과 교과서판 시작
-4. `jupyter_course/교사용_운영안.md` — 6회 분 단위 운영과 장별 확인 기준
-5. `jupyter_course/verification-report.md` — 9개 장 새 커널 실행 결과
-6. `notebooks/우리학교_급식_AI_개인추천기_학생용.ipynb` — 기존 Colab 통합판
-
-## 완성 서비스
-
-학생은 다음 익명 취향만 입력합니다.
-
-- 좋아하는 재료·메뉴 최대 5개
-- 피하고 싶은 재료·메뉴 최대 5개
-- 밥·면·국물·튀김·디저트 중 선호 유형
+- 좋아하는 재료나 메뉴
+- 피하고 싶은 재료나 메뉴
+- 밥·면·국물·튀김·디저트 가운데 선호하는 종류
 - 매운맛 선호도 1~5
-- 수업용 가상 알레르기 주의 번호 1~19(선택)
+- 수업에서 시험할 가상 알레르기 주의 번호
 
-서비스는 NEIS 메뉴를 문자 n-gram TF-IDF로 숫자화하고 코사인 유사도와 명시적 가감점을 합쳐 상위 메뉴를 추천합니다. 점수식은 `0~100으로 제한(20 + 70×유사도 + 8×좋아함 일치 + 5×유형 일치 - 18×기피 일치 - 3×매운맛 차이)`입니다. 20점 기준점은 감점 효과가 0점 하한에서 사라지지 않게 합니다. 영양 수치는 완전한 영양 행이 3개 이상일 때만 작은 K-Means로 상대적 패턴을 묶고, 부족하면 `데이터 부족`으로 표시합니다. 점수는 건강 점수나 실제 만족도 예측이 아닙니다.
+추천 결과에는 메뉴 이름과 점수뿐 아니라 순위가 달라진 까닭도 함께 표시됩니다. 예를 들어 “파스타가 들어 있음”, “면 종류를 선호함”, “매운맛 차이가 큼”처럼 입력과 결과를 연결해 설명합니다.
 
-## 개인정보와 안전
+## 수업 시작하기
 
-- 이름, 학번, 반, 연락처, 체중, 질병명은 입력하거나 저장하지 않습니다.
-- 코드 셀에는 가상 취향 프로필과 빈 알레르기 번호만 둡니다. UI 입력은 파일에 저장하지 않습니다.
-- Colab의 Gradio 화면은 접속 가능한 임시 공개 링크를 만드므로 실제 알레르기·질병 정보는 입력하지 않습니다.
-- 수업용 가상 알레르기 번호가 표시된 메뉴는 추천 후보에서 제외하는 동작만 시험합니다.
-- 실제 메뉴와 알레르기 정보는 학교 급식표와 영양사 안내를 반드시 다시 확인합니다.
-- 유료 LLM API, 로그인, 데이터베이스는 필요하지 않습니다.
-
-## 기존 Colab 통합판 실행 방법
-
-1. [Google Colab](https://colab.research.google.com/)을 엽니다.
-2. `파일 → 노트 업로드`를 선택합니다.
-3. `notebooks/우리학교_급식_AI_개인추천기_학생용.ipynb`를 업로드합니다.
-4. `런타임 → 모두 실행`을 누릅니다.
-5. 마지막 Gradio 셀에 생성된 임시 링크에서 개인추천기 화면을 사용합니다.
-
-노트북은 실시간 NEIS 조회를 먼저 시도하고 NEIS 연결 오류가 나면 요청 날짜와 겹치는 내장 남악고 예비 데이터로 전환합니다. 예비 데이터의 실제 날짜는 `2026-06-24~2026-06-30`이며, 날짜가 겹치지 않으면 사용 가능 기간을 안내하고 멈춥니다. NEIS 응답이 1,000행을 넘을 때는 전체 개수만큼 다음 페이지도 자동 조회합니다.
-
-## 로컬 개발 실행
-
-Python 3.11 이상 환경에서 다음 명령을 사용합니다.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe scripts\build_colab.py
-.\.venv\Scripts\python.exe scripts\verify_colab.py
-.\.venv\Scripts\python.exe app.py
-```
-
-Jupyter 교과서판은 패키지 목록을 `requirements-jupyter.txt`에 한 줄씩 관리합니다. 학생은 `jupyter_course/00_설치_준비.md`를 보며 다음 명령을 순서대로 직접 실행합니다.
+처음 수업을 준비할 때는 [설치 안내](jupyter_course/00_설치_준비.md)를 엽니다. 프로젝트 폴더에서 PowerShell을 실행하고 다음 명령을 한 줄씩 입력합니다.
 
 ```powershell
 py -3 --version
@@ -77,24 +28,69 @@ py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m notebook
 ```
 
-## 폴더 구조
+브라우저가 열리면 `jupyter_course/chapters/00_시작하기.ipynb`부터 차례대로 공부합니다. 자세한 수업 방법과 파일 순서는 [학생 안내](jupyter_course/README.md)에 정리되어 있습니다.
+
+## 여섯 번의 수업
+
+| 회차 | 공부할 내용 | 수업을 마칠 때 남는 것 |
+|---:|---|---|
+| 1 | Jupyter 사용법, NEIS API와 JSON | 급식 데이터가 들어오는 과정 설명 |
+| 2 | 메뉴 문자열 정리와 그래프 | 분석하기 좋은 급식표와 열량 그래프 |
+| 3 | TF-IDF, 코사인 유사도, K-Means | 취향과 메뉴를 비교한 결과와 식단 묶음 |
+| 4 | 추천 점수와 Jupyter 입력 화면 | 버튼으로 실행하는 개인 취향 추천 화면 |
+| 5 | 여러 입력으로 시험하고 모델 카드 쓰기 | 발표 가능한 최종 파일 |
+| 6 | 발표, 다른 가상 취향으로 체험, 회고 | 결과를 근거와 한계까지 설명한 발표 |
+
+분 단위 진행은 [교사용 운영안](jupyter_course/교사용_운영안.md)에서 확인할 수 있습니다.
+
+## 추천 순위는 어떻게 정할까요?
+
+메뉴 문장은 문자 조각을 이용한 TF-IDF 벡터로 바뀝니다. 코사인 유사도는 가상 취향 문장과 각 메뉴가 얼마나 비슷한지 비교합니다. 여기에 좋아하는 항목, 피하고 싶은 항목, 메뉴 종류, 매운맛 차이를 더해 최종 순서를 정합니다.
 
 ```text
-neis-meal-ai/
-├─ app.py                         Gradio 서비스
-├─ data/                          공식 NEIS 예비 데이터
-├─ docs/                          교사용·학생용 수업 자료
-├─ jupyter_course/                권장 Jupyter 교과서판과 9개 장
-├─ notebooks/                     Colab 학생용 파일
-├─ requirements-jupyter.txt       Jupyter 수업판 패키지 목록
-├─ scripts/                       데이터·노트북 생성과 검증
-├─ src/neis_meal_ai/              API·전처리·추천 핵심 코드
-└─ tests/                         자동 테스트
+0~100으로 제한(
+  20
+  + 70 × 텍스트 유사도
+  + 8 × 좋아하는 항목 일치 수
+  + 5 × 선호 종류 일치 수
+  - 18 × 피하고 싶은 항목 일치 수
+  - 3 × 매운맛 차이
+)
 ```
 
-## 참고한 공개 자료의 역할
+이 점수는 취향을 비교하기 위한 수업용 값입니다. 건강 점수도 아니고, 실제 만족도를 예측한 값도 아닙니다. K-Means로 표시하는 식단 묶음 역시 주어진 기간 안에서 영양 수치가 비슷한 날을 모은 결과일 뿐 건강 등급이 아닙니다.
 
-- [teddylee777/machine-learning](https://github.com/teddylee777/machine-learning): Python, Pandas, 데이터 시각화 학습 흐름
-- [Microsoft AI for Beginners](https://github.com/microsoft/AI-For-Beginners): AI 입문, 초보 예제, 책임 있는 AI 구성
-- [bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book): 에이전트의 `모델 + 맥락 + 도구` 개념을 확장 설명에 사용
-- [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch): 만들기·테스트·설명서·검증까지 포함하는 프로젝트 방식
+## 데이터와 안전
+
+- 기본 학교는 남악고등학교입니다. NEIS 교육청 코드는 `Q10`, 학교 코드는 `7140272`입니다.
+- 인터넷이나 NEIS 서버에 문제가 생기면 저장소의 예비 데이터로 같은 실습을 이어 갑니다.
+- 이름, 학번, 반, 연락처, 체중, 질병명은 입력하거나 저장하지 않습니다.
+- 실제 학생과 연결되는 알레르기 정보도 입력하지 않습니다. 알레르기 번호는 제외 규칙을 확인하는 가상 입력으로만 사용합니다.
+- 실제 식단과 알레르기 정보는 학교 급식표와 영양사 안내를 다시 확인해야 합니다.
+- 유료 AI API, 로그인, 데이터베이스는 필요하지 않습니다.
+
+## 폴더 안내
+
+```text
+mnu_summerschool/
+├─ data/                         수업 중 네트워크 오류에 대비한 NEIS 예비 데이터
+├─ docs/                         수업 지도안, 활동지, 교사용 체크리스트
+├─ jupyter_course/
+│  ├─ 00_설치_준비.md           Python과 Jupyter 설치 안내
+│  ├─ README.md                  학생용 수업 안내
+│  ├─ 교사용_운영안.md          6회 수업 진행안
+│  └─ chapters/                  00~08의 Jupyter 노트북
+├─ requirements-jupyter.txt      수업에 필요한 Python 패키지 목록
+├─ scripts/                      노트북 생성과 실행 확인 도구
+├─ src/neis_meal_ai/             NEIS·전처리·추천 기능
+└─ tests/                        자동 테스트
+```
+
+`notebooks/`에는 초기에 만든 Colab 통합 실습 자료가 남아 있지만, 현재 수업은 `jupyter_course/chapters/`의 분할 노트북으로 진행합니다.
+
+## 참고 자료
+
+- [teddylee777/machine-learning](https://github.com/teddylee777/machine-learning): Python, Pandas, 데이터 시각화 예제
+- [Microsoft AI for Beginners](https://github.com/microsoft/AI-For-Beginners): AI 입문 수업과 책임 있는 AI
+- [bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book): 모델·맥락·도구로 AI 시스템을 바라보는 방법
+- [AI Engineering from Scratch](https://github.com/rohitg00/ai-engineering-from-scratch): 작은 프로젝트를 만들고 시험하고 설명하는 과정

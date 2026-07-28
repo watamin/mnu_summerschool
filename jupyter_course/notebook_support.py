@@ -30,7 +30,7 @@ def find_project_root(start: Path | None = None) -> Path:
             return location
     raise RuntimeError(
         "NEIS 급식 AI 프로젝트 폴더를 찾지 못했습니다. "
-        "neis-meal-ai 폴더에서 .venv\\Scripts\\python.exe -m notebook 명령으로 "
+        "프로젝트 최상위 폴더에서 .venv\\Scripts\\python.exe -m notebook 명령으로 "
         "Jupyter를 다시 시작하세요."
     )
 

@@ -121,6 +121,13 @@ def test_build_textbook_creates_nine_jupyter_notebooks(tmp_path: Path) -> None:
         assert len(cell_ids) == len(set(cell_ids))
 
 
+def test_build_textbook_writes_portable_lf_line_endings(tmp_path: Path) -> None:
+    paths = build_textbook(tmp_path)
+
+    for path in paths:
+        assert b"\r\n" not in path.read_bytes(), path.name
+
+
 def test_first_cell_bootstraps_from_the_real_chapter_directory() -> None:
     chapter_dir = PROJECT_ROOT / "jupyter_course" / "chapters"
     notebook = _read_notebook(chapter_dir / EXPECTED_CHAPTERS[0])
