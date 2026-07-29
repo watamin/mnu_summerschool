@@ -446,6 +446,102 @@ def inverse_matrix_recommendations(
     return result
 
 
+def food_map_coordinates(
+    frame: pd.DataFrame,
+    school_name: str,
+    ratings: pd.DataFrame,
+    recommendations: pd.DataFrame,
+    *,
+    max_items: int = 50,
+) -> pd.DataFrame:
+    """직접 평가·예측·빈도 음식을 결정적 TF-IDF PCA 좌표에 놓는다."""
+
+    if int(max_items) < 2:
+        raise ValueError("음식 지도에는 음식이 2개 이상 필요합니다.")
+    counters, _ = _school_food_counters(frame)
+    name = str(school_name)
+    if name not in counters:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    survey = _validated_food_ratings(ratings, set(counters[name]))
+    recommendation_columns = {"음식", "예상 평점"}
+    if not isinstance(recommendations, pd.DataFrame) or not recommendation_columns.issubset(
+        recommendations.columns
+    ):
+        raise ValueError("음식 지도에 사용할 역행렬 추천 결과가 없습니다.")
+
+    rated_names = survey["음식"].tolist()
+    recommended_names = [
+        str(value)
+        for value in recommendations.sort_values(
+            ["예상 평점", "음식"], ascending=[False, True]
+        )["음식"].tolist()
+    ]
+    frequent_names = [
+        food
+        for food, _ in sorted(
+            counters[name].items(), key=lambda item: (-item[1], item[0])
+        )
+    ]
+    selected: list[str] = []
+    for food in [*rated_names, *recommended_names, *frequent_names]:
+        if food not in selected:
+            selected.append(food)
+        if len(selected) >= int(max_items):
+            break
+    if len(selected) < 2:
+        raise ValueError("음식 지도를 만들 실제 음식이 2개 이상 필요합니다.")
+
+    vectors = encode_texts(selected, method="tfidf").matrix
+    centered = vectors - vectors.mean(axis=0, keepdims=True)
+    u, singular_values, vt = np.linalg.svd(centered, full_matrices=False)
+    coordinates = np.zeros((len(selected), 2), dtype=float)
+    component_count = min(2, len(singular_values))
+    for component in range(component_count):
+        loading = vt[component]
+        reference = loading[int(np.argmax(np.abs(loading)))] if loading.size else 1.0
+        sign = -1.0 if reference < 0 else 1.0
+        coordinates[:, component] = (
+            u[:, component] * singular_values[component] * sign
+        )
+    if not np.isfinite(coordinates).all():
+        raise ValueError("음식 지도의 2차원 좌표를 안정적으로 계산하지 못했습니다.")
+
+    actual_ratings = dict(zip(survey["음식"], survey["평점"], strict=True))
+    predicted_ratings = dict(
+        zip(
+            recommendations["음식"].astype(str),
+            pd.to_numeric(recommendations["예상 평점"], errors="coerce"),
+            strict=True,
+        )
+    )
+    records = []
+    for index, food in enumerate(selected):
+        if food in actual_ratings:
+            category = "직접 평가"
+            rating = float(actual_ratings[food])
+        elif food in predicted_ratings and math.isfinite(predicted_ratings[food]):
+            category = "역행렬 추천"
+            rating = float(predicted_ratings[food])
+        else:
+            category = "빈도 핵심"
+            rating = 3.0
+        records.append(
+            {
+                "번호": index + 1,
+                "음식": food,
+                "X": round(float(coordinates[index, 0]), 6),
+                "Y": round(float(coordinates[index, 1]), 6),
+                "구분": category,
+                "평점": round(rating, 2),
+                "등장 횟수": int(counters[name][food]),
+            }
+        )
+    result = pd.DataFrame.from_records(records)
+    result.attrs["school_name"] = name
+    result.attrs["vector_notice"] = "문자 n-gram TF-IDF를 SVD/PCA 두 축으로 줄였습니다."
+    return result
+
+
 def food_mbti(
     *,
     rice_vs_noodle: int,

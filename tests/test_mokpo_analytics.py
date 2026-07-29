@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -11,6 +12,7 @@ from neis_meal_ai.mokpo_analytics import (
     feedback_from_csv,
     feedback_to_csv,
     food_mbti,
+    food_map_coordinates,
     inverse_matrix_recommendations,
     meal_buddies,
     pareto_candidates,
@@ -316,6 +318,44 @@ def test_inverse_matrix_rejects_out_of_range_or_unknown_ratings() -> None:
         inverse_matrix_recommendations(
             _matrix_meal_frame(), "목포행렬고등학교", unknown
         )
+
+
+def test_food_map_coordinates_are_finite_reproducible_and_labeled() -> None:
+    ratings = pd.DataFrame(
+        [{"음식": "치즈파스타", "평점": 5}, {"음식": "고등어구이", "평점": 1}]
+    )
+    recommendations = inverse_matrix_recommendations(
+        _matrix_meal_frame(), "목포행렬고등학교", ratings
+    )
+
+    first = food_map_coordinates(
+        _matrix_meal_frame(),
+        "목포행렬고등학교",
+        ratings,
+        recommendations,
+        max_items=5,
+    )
+    second = food_map_coordinates(
+        _matrix_meal_frame(),
+        "목포행렬고등학교",
+        ratings,
+        recommendations,
+        max_items=5,
+    )
+
+    assert first.equals(second)
+    assert len(first) <= 5
+    assert first["음식"].is_unique
+    assert np.isfinite(first[["X", "Y"]].to_numpy()).all()
+    assert set(first.loc[first["구분"] == "직접 평가", "음식"]) == {
+        "치즈파스타",
+        "고등어구이",
+    }
+    tomato = first.loc[first["음식"] == "토마토파스타"].iloc[0]
+    expected = recommendations.loc[
+        recommendations["음식"] == "토마토파스타", "예상 평점"
+    ].iloc[0]
+    assert tomato["평점"] == expected
 
 
 def test_food_mbti_uses_all_four_question_axes() -> None:

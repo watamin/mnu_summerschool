@@ -18,12 +18,15 @@ from .mokpo_analytics import (
     feedback_from_csv,
     feedback_to_csv,
     food_mbti,
+    food_map_coordinates,
+    inverse_matrix_recommendations,
     meal_buddies,
     menu_pair_scores,
     pareto_candidates,
     predict_satisfaction,
     recommend_high_schools,
     school_statistics,
+    sample_school_foods,
     signature_terms,
     validate_feedback_frame,
 )
@@ -46,6 +49,143 @@ def _recommendation_table(frame: pd.DataFrame) -> pd.DataFrame:
             "menu_text": "메뉴",
             "prediction_reason": "예측 근거",
         }
+    )
+
+
+def food_map_figure(coordinates: pd.DataFrame):
+    """한글 글꼴 설치와 무관한 번호형 음식 유사도 산점도를 그린다."""
+
+    from matplotlib import pyplot as plt
+    from matplotlib.colors import Normalize
+
+    if coordinates.empty:
+        raise ValueError("그릴 음식 지도 좌표가 없습니다.")
+    required = {"번호", "음식", "X", "Y", "구분", "평점", "등장 횟수"}
+    if not required.issubset(coordinates.columns):
+        raise ValueError("음식 지도 좌표 표의 열이 올바르지 않습니다.")
+    predicted = coordinates.loc[coordinates["구분"] == "역행렬 추천"]
+    top_predicted = set(
+        predicted.nlargest(min(5, len(predicted)), "평점")["음식"].astype(str)
+    )
+    norm = Normalize(vmin=1.0, vmax=5.0)
+    figure, axis = plt.subplots(figsize=(10, 7))
+    for row in coordinates.itertuples(index=False):
+        directly_rated = row.구분 == "직접 평가"
+        top_choice = str(row.음식) in top_predicted
+        marker = "*" if top_choice else "o"
+        size = 90 + min(int(row._6), 10) * 18 if hasattr(row, "_6") else 108
+        point = axis.scatter(
+            float(row.X),
+            float(row.Y),
+            c=[float(row.평점)],
+            cmap="viridis",
+            norm=norm,
+            s=size,
+            marker=marker,
+            edgecolors="black" if directly_rated else "none",
+            linewidths=1.4 if directly_rated else 0.0,
+            alpha=0.88,
+        )
+        axis.annotate(
+            str(int(row.번호)),
+            (float(row.X), float(row.Y)),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+    axis.axhline(0, color="#d0d0d0", linewidth=0.8)
+    axis.axvline(0, color="#d0d0d0", linewidth=0.8)
+    axis.set_xlabel("TF-IDF PCA axis 1")
+    axis.set_ylabel("TF-IDF PCA axis 2")
+    axis.set_title("Food similarity map")
+    figure.colorbar(point, ax=axis, label="Rating (1-5)")
+    figure.tight_layout()
+    return figure
+
+
+def sample_foods_callback(
+    dataset: MokpoDataset,
+    *,
+    school_name: str,
+    seed: int,
+) -> tuple[int, list[str], str, pd.DataFrame]:
+    """학교 실제 음식 30개와 다음 추첨 seed를 준비한다."""
+
+    current_seed = int(seed or 0)
+    survey = sample_school_foods(
+        dataset.meals,
+        str(school_name),
+        sample_size=30,
+        seed=current_seed,
+    )
+    foods = survey["음식"].astype(str).tolist()
+    if len(survey) == 30:
+        message = (
+            f"### {school_name} 음식 취향 설문\n"
+            "실제 급식 음식 30개를 뽑았습니다. 평점 열을 1~5점으로 바꿔 주세요."
+        )
+    else:
+        message = (
+            f"### {school_name} 음식 취향 설문\n"
+            f"고유 음식이 30개보다 적어 실제 급식 음식 {len(survey)}개를 모두 표시했습니다."
+        )
+    return current_seed + 1, foods, message, survey
+
+
+def matrix_recommendation_callback(
+    dataset: MokpoDataset,
+    *,
+    school_name: str,
+    sampled_foods: Sequence[str],
+    ratings: pd.DataFrame,
+) -> tuple[str, pd.DataFrame, pd.DataFrame, object, pd.DataFrame, list[dict]]:
+    """편집한 음식 평점을 검증하고 행렬 추천과 2차원 지도를 함께 만든다."""
+
+    survey = ratings.copy() if isinstance(ratings, pd.DataFrame) else pd.DataFrame(
+        ratings, columns=["음식", "평점"]
+    )
+    if not {"음식", "평점"}.issubset(survey.columns):
+        raise ValueError("음식과 평점 두 열이 있는 설문 표가 필요합니다.")
+    current_foods = survey["음식"].astype(str).str.strip().tolist()
+    expected_foods = [str(value).strip() for value in (sampled_foods or [])]
+    if current_foods != expected_foods:
+        raise ValueError("음식 이름이나 순서를 바꾸지 말고 평점 열만 수정하세요.")
+    recommendations = inverse_matrix_recommendations(
+        dataset.meals,
+        str(school_name),
+        survey,
+        regularization=0.1,
+    )
+    if recommendations.empty:
+        raise ValueError("모든 실제 음식을 평가해 새로 예측할 음식이 없습니다.")
+    result_count = min(10, max(1, len(recommendations) // 2))
+    best = recommendations.head(result_count).reset_index(drop=True)
+    worst = recommendations.sort_values(
+        ["예상 평점", "등장 횟수", "음식"], ascending=[True, False, True]
+    ).head(result_count).reset_index(drop=True)
+    coordinates = food_map_coordinates(
+        dataset.meals,
+        str(school_name),
+        survey,
+        recommendations,
+    )
+    figure = food_map_figure(coordinates)
+    gram_rows, gram_columns = recommendations.attrs["gram_shape"]
+    message = (
+        f"### {school_name} 역행렬 추천 결과\n"
+        f"평가 {recommendations.attrs['rated_count']}개 × TF-IDF 특징 "
+        f"{recommendations.attrs['feature_count']}개를 사용했습니다.\n\n"
+        f"`G = X Xᵀ + 0.1I`는 {gram_rows}×{gram_columns} 행렬이고, "
+        "`w = Xᵀ pinv(G)(y - 3)`로 취향 가중치를 계산했습니다.\n\n"
+        "예상 평점은 `clip(3 + X_all w, 1, 5)`로 1~5점 사이에 두었습니다."
+    )
+    return (
+        message,
+        best,
+        worst,
+        figure,
+        coordinates,
+        recommendations.to_dict(orient="records"),
     )
 
 

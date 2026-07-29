@@ -6,6 +6,7 @@ from pathlib import Path
 import gradio as gr
 import pandas as pd
 import pytest
+from matplotlib.figure import Figure
 
 import mokpo_service
 from neis_meal_ai.mokpo_data import MokpoDataset, load_mokpo_dataset, load_validation_menus
@@ -16,8 +17,10 @@ from neis_meal_ai.mokpo_ui import (
     create_mokpo_app,
     lab_callback,
     mnu_prediction_callback,
+    matrix_recommendation_callback,
     personal_recommendation_callback,
     register_mnu_predictions_callback,
+    sample_foods_callback,
     school_analysis_callback,
 )
 from neis_meal_ai.mokpo_analytics import feedback_to_csv
@@ -55,6 +58,40 @@ def test_personal_callback_returns_best_and_worst_real_school_menus() -> None:
     assert not best.empty
     assert not worst.empty
     assert set(best["날짜"]).isdisjoint(worst["날짜"])
+
+
+def test_matrix_callbacks_sample_real_foods_and_return_map() -> None:
+    dataset, _ = _data()
+    school = max(
+        dataset.meals.groupby("school_name"),
+        key=lambda item: len({dish for dishes in item[1]["dishes"] for dish in dishes}),
+    )[0]
+
+    next_seed, sampled_names, sample_message, survey = sample_foods_callback(
+        dataset, school_name=school, seed=11
+    )
+    survey.loc[0, "평점"] = 5
+    survey.loc[1, "평점"] = 1
+    message, best, worst, figure, coordinates, matrix_state = (
+        matrix_recommendation_callback(
+            dataset,
+            school_name=school,
+            sampled_foods=sampled_names,
+            ratings=survey,
+        )
+    )
+
+    assert next_seed == 12
+    assert len(survey) == 30
+    assert len(sampled_names) == 30
+    assert survey["음식"].is_unique
+    assert "실제 급식 음식 30개" in sample_message
+    assert "pinv" in message
+    assert not best.empty and not worst.empty
+    assert set(best["음식"]).isdisjoint(worst["음식"])
+    assert isinstance(figure, Figure)
+    assert not coordinates[["X", "Y"]].isna().any().any()
+    assert len(matrix_state) >= len(best) + len(worst)
 
 
 def test_feedback_callback_adds_anonymous_review_and_rejects_duplicate() -> None:
