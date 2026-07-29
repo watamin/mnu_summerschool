@@ -11,4 +11,5 @@ verification/
 outputs/
 .cache/
 neis.txt
+nvidia_nim.txt
 .env
