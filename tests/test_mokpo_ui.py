@@ -555,9 +555,12 @@ def test_mokpo_service_reuses_one_lazy_embedding_model(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_create_app(_dataset, _validation, *, embedder, nim_client):
+    def fake_create_app(
+        _dataset, _validation, *, embedder, nim_client, profile_store
+    ):
         captured["embedder"] = embedder
         captured["nim_client"] = nim_client
+        captured["profile_store"] = profile_store
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
@@ -565,3 +568,4 @@ def test_mokpo_service_reuses_one_lazy_embedding_model(
     assert mokpo_service.create_service_app() == "app"
     assert captured["embedder"].__class__.__name__ == "SentenceTransformerEmbedder"
     assert captured["nim_client"].__class__.__name__ == "NvidiaNimClient"
+    assert isinstance(captured["profile_store"], StudentProfileStore)
