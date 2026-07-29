@@ -320,6 +320,132 @@ def school_food_frequencies(
     )
 
 
+def sample_school_foods(
+    frame: pd.DataFrame,
+    school_name: str,
+    *,
+    sample_size: int = 30,
+    seed: int = 0,
+) -> pd.DataFrame:
+    """선택 학교의 실제 음식에서 재현 가능한 평점 질문을 중복 없이 뽑는다."""
+
+    if int(sample_size) < 1:
+        raise ValueError("설문 음식 수는 1개 이상이어야 합니다.")
+    counters, _ = _school_food_counters(frame)
+    name = str(school_name)
+    if name not in counters:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    foods = np.asarray(sorted(counters[name]), dtype=object)
+    count = min(int(sample_size), len(foods))
+    rng = np.random.default_rng(int(seed))
+    selected = [str(value) for value in rng.choice(foods, size=count, replace=False)]
+    return pd.DataFrame({"음식": selected, "평점": [3] * count})
+
+
+def _validated_food_ratings(
+    ratings: pd.DataFrame, available_foods: set[str]
+) -> pd.DataFrame:
+    if not isinstance(ratings, pd.DataFrame) or not {"음식", "평점"}.issubset(
+        ratings.columns
+    ):
+        raise ValueError("음식과 평점 두 열이 있는 설문 표가 필요합니다.")
+    result = ratings[["음식", "평점"]].copy()
+    result["음식"] = result["음식"].astype(str).str.strip()
+    if len(result) < 2:
+        raise ValueError("역행렬 추천에는 평가 음식이 2개 이상 필요합니다.")
+    if result["음식"].eq("").any() or result["음식"].duplicated().any():
+        raise ValueError("평점 표의 음식은 비어 있거나 중복될 수 없습니다.")
+    if not set(result["음식"]).issubset(available_foods):
+        raise ValueError("평점 표에는 선택 학교의 실제 급식 음식만 사용할 수 있습니다.")
+    numeric = pd.to_numeric(result["평점"], errors="coerce")
+    if numeric.isna().any() or not numeric.between(1, 5).all():
+        raise ValueError("음식 평점은 1에서 5 사이의 숫자여야 합니다.")
+    result["평점"] = numeric.astype(float)
+    return result.reset_index(drop=True)
+
+
+def inverse_matrix_recommendations(
+    frame: pd.DataFrame,
+    school_name: str,
+    ratings: pd.DataFrame,
+    *,
+    regularization: float = 0.1,
+) -> pd.DataFrame:
+    """30개 음식 평점에서 정규화 의사역행렬로 미평가 음식을 예측한다."""
+
+    if not math.isfinite(float(regularization)) or float(regularization) <= 0:
+        raise ValueError("정규화 값은 0보다 큰 숫자여야 합니다.")
+    counters, _ = _school_food_counters(frame)
+    name = str(school_name)
+    if name not in counters:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    foods = sorted(counters[name])
+    food_positions = {food: index for index, food in enumerate(foods)}
+    survey = _validated_food_ratings(ratings, set(foods))
+    vector_result = encode_texts(foods, method="tfidf")
+    all_vectors = vector_result.matrix
+    if all_vectors.shape[1] == 0:
+        raise ValueError("음식 이름에서 TF-IDF 글자 특징을 만들 수 없습니다.")
+
+    rated_names = survey["음식"].tolist()
+    rated_indices = [food_positions[food] for food in rated_names]
+    rated_vectors = all_vectors[rated_indices]
+    rating_values = survey["평점"].to_numpy(dtype=float)
+    centered = rating_values - 3.0
+    lambda_value = float(regularization)
+    gram = rated_vectors @ rated_vectors.T + lambda_value * np.eye(len(survey))
+    coefficients = np.linalg.pinv(gram) @ centered
+    weights = rated_vectors.T @ coefficients
+    predictions = np.clip(3.0 + all_vectors @ weights, 1.0, 5.0)
+    similarities = all_vectors @ rated_vectors.T
+    contributions = similarities * coefficients
+
+    rated_set = set(rated_names)
+    records: list[dict[str, object]] = []
+    for index, food in enumerate(foods):
+        if food in rated_set:
+            continue
+        influence_index = int(np.argmax(np.abs(contributions[index])))
+        records.append(
+            {
+                "음식": food,
+                "예상 평점": round(float(predictions[index]), 2),
+                "가장 영향 준 평가 음식": rated_names[influence_index],
+                "그 음식 평점": float(rating_values[influence_index]),
+                "유사도": round(float(similarities[index, influence_index]), 4),
+                "등장 횟수": int(counters[name][food]),
+            }
+        )
+    result = pd.DataFrame.from_records(
+        records,
+        columns=[
+            "음식",
+            "예상 평점",
+            "가장 영향 준 평가 음식",
+            "그 음식 평점",
+            "유사도",
+            "등장 횟수",
+        ],
+    )
+    if not result.empty:
+        result = result.sort_values(
+            ["예상 평점", "등장 횟수", "음식"],
+            ascending=[False, False, True],
+        ).reset_index(drop=True)
+    result.attrs.update(
+        {
+            "school_name": name,
+            "rated_count": len(survey),
+            "feature_count": int(all_vectors.shape[1]),
+            "gram_shape": tuple(int(value) for value in gram.shape),
+            "regularization": lambda_value,
+            "formula": "w = Xᵀ pinv(XXᵀ + λI)(y - 3)",
+            "vector_notice": vector_result.notice,
+        }
+    )
+    return result
+
+
 def food_mbti(
     *,
     rice_vs_noodle: int,

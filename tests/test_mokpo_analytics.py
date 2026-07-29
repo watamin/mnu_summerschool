@@ -11,6 +11,7 @@ from neis_meal_ai.mokpo_analytics import (
     feedback_from_csv,
     feedback_to_csv,
     food_mbti,
+    inverse_matrix_recommendations,
     meal_buddies,
     pareto_candidates,
     predict_satisfaction,
@@ -19,6 +20,7 @@ from neis_meal_ai.mokpo_analytics import (
     school_food_value_explanation,
     school_food_values,
     school_statistics,
+    sample_school_foods,
     signature_terms,
     user_based_prediction,
     validate_feedback_frame,
@@ -111,6 +113,33 @@ def _feedback() -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _matrix_meal_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "date": "2026-07-01",
+                "school_name": "목포행렬고등학교",
+                "school_kind": "고등학교",
+                "school_code": "7140999",
+                "menu_text": "치즈파스타 토마토파스타 샐러드",
+                "dishes": ["치즈파스타", "토마토파스타", "샐러드"],
+                "calories": 700.0,
+                "dish_count": 3,
+            },
+            {
+                "date": "2026-07-02",
+                "school_name": "목포행렬고등학교",
+                "school_kind": "고등학교",
+                "school_code": "7140999",
+                "menu_text": "고등어구이 갈치구이 잡곡밥",
+                "dishes": ["고등어구이", "갈치구이", "잡곡밥"],
+                "calories": 680.0,
+                "dish_count": 3,
+            },
+        ]
+    )
 
 
 def test_content_scores_put_liked_menu_above_avoided_menu() -> None:
@@ -218,6 +247,75 @@ def test_school_food_frequencies_rank_count_then_food_name() -> None:
         "음식": "배추김치",
         "등장 횟수": 2,
     }
+
+
+def test_sample_school_foods_is_reproducible_and_uses_real_unique_foods() -> None:
+    first = sample_school_foods(
+        _meal_frame(), "목포가람고등학교", sample_size=3, seed=7
+    )
+    second = sample_school_foods(
+        _meal_frame(), "목포가람고등학교", sample_size=3, seed=7
+    )
+
+    assert first.equals(second)
+    assert len(first) == 3
+    assert first["음식"].is_unique
+    assert set(first["음식"]) <= {
+        "투움바스파게티",
+        "오이피클",
+        "요구르트",
+        "매운 닭갈비덮밥",
+        "배추김치",
+    }
+    assert set(first["평점"]) == {3}
+
+
+def test_inverse_matrix_recommendation_transfers_positive_and_negative_taste() -> None:
+    ratings = pd.DataFrame(
+        [{"음식": "치즈파스타", "평점": 5}, {"음식": "고등어구이", "평점": 1}]
+    )
+
+    result = inverse_matrix_recommendations(
+        _matrix_meal_frame(), "목포행렬고등학교", ratings
+    )
+
+    pasta = result.loc[result["음식"] == "토마토파스타"].iloc[0]
+    fish = result.loc[result["음식"] == "갈치구이"].iloc[0]
+    assert pasta["예상 평점"] > fish["예상 평점"]
+    assert pasta["가장 영향 준 평가 음식"] == "치즈파스타"
+    assert fish["가장 영향 준 평가 음식"] == "고등어구이"
+    assert result.attrs["gram_shape"] == (2, 2)
+    assert result.attrs["regularization"] == pytest.approx(0.1)
+
+
+def test_inverse_matrix_neutral_ratings_stay_at_three() -> None:
+    ratings = pd.DataFrame(
+        [{"음식": "치즈파스타", "평점": 3}, {"음식": "고등어구이", "평점": 3}]
+    )
+
+    result = inverse_matrix_recommendations(
+        _matrix_meal_frame(), "목포행렬고등학교", ratings
+    )
+
+    assert (result["예상 평점"] == 3.0).all()
+
+
+def test_inverse_matrix_rejects_out_of_range_or_unknown_ratings() -> None:
+    invalid = pd.DataFrame(
+        [{"음식": "치즈파스타", "평점": 6}, {"음식": "고등어구이", "평점": 1}]
+    )
+    unknown = pd.DataFrame(
+        [{"음식": "없는음식", "평점": 5}, {"음식": "고등어구이", "평점": 1}]
+    )
+
+    with pytest.raises(ValueError, match="1에서 5"):
+        inverse_matrix_recommendations(
+            _matrix_meal_frame(), "목포행렬고등학교", invalid
+        )
+    with pytest.raises(ValueError, match="실제 급식"):
+        inverse_matrix_recommendations(
+            _matrix_meal_frame(), "목포행렬고등학교", unknown
+        )
 
 
 def test_food_mbti_uses_all_four_question_axes() -> None:
