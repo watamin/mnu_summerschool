@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import tempfile
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -25,12 +25,16 @@ from .mokpo_analytics import (
     pareto_candidates,
     predict_satisfaction,
     recommend_high_schools,
+    school_food_frequencies,
+    school_food_value_explanation,
+    school_food_values,
     school_statistics,
     sample_school_foods,
     signature_terms,
     validate_feedback_frame,
 )
 from .mokpo_data import MokpoDataset
+from .nim_chat import NimChatError, NvidiaNimClient
 from .recommender import MENU_TYPE_KEYWORDS
 from .text_vectors import TextEmbedder
 
@@ -138,7 +142,7 @@ def matrix_recommendation_callback(
     school_name: str,
     sampled_foods: Sequence[str],
     ratings: pd.DataFrame,
-) -> tuple[str, pd.DataFrame, pd.DataFrame, object, pd.DataFrame, list[dict]]:
+) -> tuple[str, pd.DataFrame, pd.DataFrame, object, pd.DataFrame, dict[str, object]]:
     """편집한 음식 평점을 검증하고 행렬 추천과 2차원 지도를 함께 만든다."""
 
     survey = ratings.copy() if isinstance(ratings, pd.DataFrame) else pd.DataFrame(
@@ -185,8 +189,89 @@ def matrix_recommendation_callback(
         worst,
         figure,
         coordinates,
-        recommendations.to_dict(orient="records"),
+        {
+            "school_name": str(school_name),
+            "records": recommendations.to_dict(orient="records"),
+        },
     )
+
+
+def _school_chat_context(
+    dataset: MokpoDataset,
+    school_name: str,
+    matrix_state: Mapping[str, object] | None,
+) -> str:
+    stats = school_statistics(dataset.meals)
+    selected_stats = stats.loc[stats["학교"] == str(school_name)]
+    if selected_stats.empty:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    frequencies = school_food_frequencies(
+        dataset.meals, str(school_name), top_n=10
+    )
+    values = school_food_values(dataset.meals, str(school_name), top_n=10)
+    parts = [
+        (
+            f"데이터 조회 기간={dataset.metadata['query_start']}~"
+            f"{dataset.metadata['query_end']}, 실제 식단일="
+            f"{dataset.metadata['actual_start']}~{dataset.metadata['actual_end']}, "
+            f"전체 실제 중식 행={dataset.metadata['meal_row_count']}"
+        ),
+        "[선택 학교 통계]\n" + selected_stats.to_string(index=False),
+        "[자주 나온 핵심 음식]\n" + frequencies.to_string(index=False),
+        "[TF-IDF 데이터 가치 상위 음식]\n" + values.to_string(index=False),
+        "[1위 계산식]\n" + school_food_value_explanation(values),
+    ]
+    if matrix_state and str(matrix_state.get("school_name", "")) == str(school_name):
+        records = matrix_state.get("records", [])
+        matrix = pd.DataFrame.from_records(records if isinstance(records, list) else [])
+        if {"음식", "예상 평점"}.issubset(matrix.columns) and not matrix.empty:
+            best = matrix.sort_values(
+                ["예상 평점", "음식"], ascending=[False, True]
+            ).head(5)
+            worst = matrix.sort_values(
+                ["예상 평점", "음식"], ascending=[True, True]
+            ).head(5)
+            parts.extend(
+                [
+                    "[역행렬 예상 Best]\n" + best.to_string(index=False),
+                    "[역행렬 예상 Worst]\n" + worst.to_string(index=False),
+                ]
+            )
+    return "\n\n".join(parts)
+
+
+def meal_chat_callback(
+    dataset: MokpoDataset,
+    *,
+    school_name: str,
+    question: str,
+    history: Sequence[Mapping[str, str]] | None,
+    nim_client: NvidiaNimClient | None,
+    matrix_state: Mapping[str, object] | None,
+) -> tuple[list[dict[str, str]], str]:
+    """선택 학교의 계산 근거로 NIM 답변을 만들고 대화 목록에 붙인다."""
+
+    current_history = [
+        {"role": str(item.get("role", "")), "content": str(item.get("content", ""))}
+        for item in (history or [])
+        if str(item.get("role", "")) in {"user", "assistant"}
+    ]
+    cleaned_question = str(question or "").strip()
+    if not cleaned_question:
+        return current_history, ""
+    if nim_client is None:
+        answer = "NVIDIA NIM 연결이 준비되지 않았습니다. API 키 파일을 확인해 주세요."
+    else:
+        try:
+            context = _school_chat_context(dataset, str(school_name), matrix_state)
+            answer = nim_client.ask(cleaned_question, context, current_history)
+        except (NimChatError, ValueError) as exc:
+            answer = str(exc)
+    return [
+        *current_history,
+        {"role": "user", "content": cleaned_question},
+        {"role": "assistant", "content": answer},
+    ], ""
 
 
 def personal_recommendation_callback(

@@ -16,6 +16,7 @@ from neis_meal_ai.mokpo_ui import (
     analyze_feedback_callback,
     create_mokpo_app,
     lab_callback,
+    meal_chat_callback,
     mnu_prediction_callback,
     matrix_recommendation_callback,
     personal_recommendation_callback,
@@ -91,7 +92,62 @@ def test_matrix_callbacks_sample_real_foods_and_return_map() -> None:
     assert set(best["음식"]).isdisjoint(worst["음식"])
     assert isinstance(figure, Figure)
     assert not coordinates[["X", "Y"]].isna().any().any()
-    assert len(matrix_state) >= len(best) + len(worst)
+    assert matrix_state["school_name"] == school
+    assert len(matrix_state["records"]) >= len(best) + len(worst)
+
+
+class RecordingNimClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def ask(self, question, context, history=()):
+        self.calls.append(
+            {"question": question, "context": context, "history": list(history)}
+        )
+        return "TF와 IDF를 곱한 데이터 가치 점수가 가장 높기 때문입니다."
+
+
+def test_meal_chat_callback_grounds_answer_in_selected_school_values() -> None:
+    dataset, _ = _data()
+    school = dataset.meals["school_name"].iloc[0]
+    client = RecordingNimClient()
+
+    history, cleared = meal_chat_callback(
+        dataset,
+        school_name=school,
+        question="왜 이 음식이 1위인가요?",
+        history=[],
+        nim_client=client,
+        matrix_state=None,
+    )
+
+    assert cleared == ""
+    assert history[-2] == {"role": "user", "content": "왜 이 음식이 1위인가요?"}
+    assert history[-1]["role"] == "assistant"
+    assert "데이터 가치 점수" in history[-1]["content"]
+    assert len(client.calls) == 1
+    context = client.calls[0]["context"]
+    assert school in context
+    assert all(term in context for term in ("TF", "IDF", "데이터 가치 점수"))
+
+
+def test_meal_chat_callback_ignores_an_empty_question() -> None:
+    dataset, _ = _data()
+    client = RecordingNimClient()
+    existing = [{"role": "assistant", "content": "질문해 주세요."}]
+
+    history, cleared = meal_chat_callback(
+        dataset,
+        school_name=dataset.meals["school_name"].iloc[0],
+        question="   ",
+        history=existing,
+        nim_client=client,
+        matrix_state=None,
+    )
+
+    assert history == existing
+    assert cleared == ""
+    assert client.calls == []
 
 
 def test_feedback_callback_adds_anonymous_review_and_rejects_duplicate() -> None:
