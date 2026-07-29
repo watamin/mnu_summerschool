@@ -20,6 +20,8 @@ from .mokpo_analytics import (
     feedback_to_csv,
     food_mbti,
     food_map_coordinates,
+    global_food_value_explanation,
+    global_food_values,
     inverse_matrix_recommendations,
     meal_buddies,
     menu_pair_scores,
@@ -220,6 +222,7 @@ def _school_chat_context(
         dataset.meals, str(school_name), top_n=10
     )
     values = school_food_values(dataset.meals, str(school_name), top_n=10)
+    global_values = global_food_values(dataset.meals, top_n=10)
     parts = [
         (
             f"데이터 조회 기간={dataset.metadata['query_start']}~"
@@ -231,6 +234,10 @@ def _school_chat_context(
         "[자주 나온 핵심 음식]\n" + frequencies.to_string(index=False),
         "[TF-IDF 데이터 가치 상위 음식]\n" + values.to_string(index=False),
         "[1위 계산식]\n" + school_food_value_explanation(values),
+        "[학교와 상관없는 전체 음식 랭킹]\n"
+        + global_values.to_string(index=False),
+        "[전체 음식 1위 계산식]\n"
+        + global_food_value_explanation(global_values),
     ]
     if matrix_state and str(matrix_state.get("school_name", "")) == str(school_name):
         records = matrix_state.get("records", [])
@@ -740,10 +747,7 @@ def school_value_analysis_callback(
         dataset.meals, str(school_name), top_n=15
     )
     values = school_food_values(dataset.meals, str(school_name), top_n=20)
-    overall = school_food_values(dataset.meals).sort_values(
-        ["데이터 가치 점수", "등장 횟수", "학교", "음식"],
-        ascending=[False, False, True, True],
-    ).head(30).reset_index(drop=True)
+    overall = global_food_values(dataset.meals, top_n=50)
     ranking, notice = recommend_high_schools(
         dataset.meals,
         str(preference_text or ""),
@@ -848,6 +852,8 @@ def create_mokpo_app(
         f"조회 {dataset.metadata['query_start']}~{dataset.metadata['query_end']} · "
         f"실제 식단일 {dataset.metadata['actual_start']}~{dataset.metadata['actual_end']}"
     )
+    global_ranking = global_food_values(dataset.meals, top_n=50)
+    global_ranking_explanation = global_food_value_explanation(global_ranking)
 
     with gr.Blocks(title="목포 급식 AI 탐험실") as demo:
         feedback_state = gr.State([])
@@ -996,7 +1002,19 @@ def create_mokpo_app(
 
         with gr.Tab("학교별 가치 음식"):
             gr.Markdown(
-                "## 자주 나온 핵심 음식과 TF-IDF 데이터 가치 음식\n"
+                "## 학교 상관없는 전체 음식 중요도 랭킹\n"
+                f"{global_ranking_explanation}\n\n"
+                "같은 음식은 여러 학교에 나와도 한 행으로 합칩니다. 이 순위는 전체 자료에서 "
+                "얼마나 자주 등장하고 몇 개 학교에 퍼져 있는지를 함께 본 결과이며, 맛이나 "
+                "영양 순위는 아닙니다."
+            )
+            overall_value_table = gr.Dataframe(
+                value=global_ranking,
+                label="학교 상관없는 전체 음식 중요도 랭킹",
+                interactive=False,
+            )
+            gr.Markdown(
+                "---\n## 선택 학교의 핵심 음식과 TF-IDF 데이터 가치 음식\n"
                 "가장 자주 나온 음식은 **횟수**만 봅니다. 반면 데이터 가치 점수는 한 학교에서 "
                 "자주 나오면서 다른 학교에는 덜 흔한 음식을 찾습니다.\n\n"
                 "$$TF = \\frac{해당\\ 음식\\ 등장\\ 횟수}{학교\\ 전체\\ 음식\\ 수}$$\n"
@@ -1025,9 +1043,6 @@ def create_mokpo_app(
                     label="TF-IDF 데이터 가치 점수 상세", interactive=False
                 )
             with gr.Row():
-                overall_value_table = gr.Dataframe(
-                    label="전체 학교 TF-IDF 가치 순위", interactive=False
-                )
                 high_rank_table = gr.Dataframe(
                     label="급식 취향 기준 고등학교", interactive=False
                 )

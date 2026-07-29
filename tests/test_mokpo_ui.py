@@ -155,6 +155,7 @@ def test_meal_chat_callback_grounds_answer_in_selected_school_values() -> None:
     context = client.calls[0]["context"]
     assert school in context
     assert all(term in context for term in ("TF", "IDF", "데이터 가치 점수"))
+    assert "학교와 상관없는 전체 음식 랭킹" in context
 
 
 def test_meal_chat_callback_ignores_an_empty_question() -> None:
@@ -453,6 +454,9 @@ def test_school_value_analysis_shows_real_formula_inputs_and_rankings() -> None:
     assert not overall.empty
     assert not ranking.empty
     assert values.iloc[0]["순위"] == 1
+    assert overall["음식"].is_unique
+    assert overall.iloc[0]["전체 순위"] == 1
+    assert "전체 데이터 가치 점수" in overall.columns
 
 
 def test_mokpo_app_contains_food_value_matrix_map_and_nim_service() -> None:
@@ -467,6 +471,7 @@ def test_mokpo_app_contains_food_value_matrix_map_and_nim_service() -> None:
         "30개 음식 역행렬 추천",
         "모둠 피드백 분석",
         "학교별 가치 음식",
+        "학교 상관없는 전체 음식 중요도 랭킹",
         "AI 식단 실험실",
         "NVIDIA NIM 데이터 해설",
         "31개교",
