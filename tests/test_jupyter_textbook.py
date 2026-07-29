@@ -74,6 +74,9 @@ EXPECTED_RESULT_KEYS = {
         "two_grams",
         "common_idf",
         "rare_idf",
+        "document_count",
+        "document_top_terms",
+        "document_sources_verified",
     },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
@@ -322,6 +325,17 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     assert len(results["03"]["similarities"]) == 5
     assert results["03"]["two_grams"] == ["·파", "파스", "스타", "타·"]
     assert results["03"]["rare_idf"] > results["03"]["common_idf"]
+    assert results["03"]["document_count"] == 3
+    assert results["03"]["document_sources_verified"] is True
+    document_terms = results["03"]["document_top_terms"]
+    assert set(document_terms) == {
+        "신경망 소개",
+        "컴퓨터 비전 소개",
+        "윤리적이고 책임 있는 AI",
+    }
+    assert {"뉴런", "신경망"} & set(document_terms["신경망 소개"])
+    assert {"이미지", "비전"} & set(document_terms["컴퓨터 비전 소개"])
+    assert "책임" in document_terms["윤리적이고 책임 있는 AI"]
     assert len(results["04"]["cluster_names"]) >= 2
     assert results["05"]["recommendations"] == 3
     assert results["06"]["widget_ready"] is True

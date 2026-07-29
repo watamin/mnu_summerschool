@@ -1,0 +1,33 @@
+{
+  "collection": "Microsoft AI-For-Beginners 한국어 번역 학습 자료",
+  "repository": "https://github.com/microsoft/AI-For-Beginners",
+  "revision": "33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b",
+  "license": "MIT",
+  "license_file": "UPSTREAM_LICENSE.txt",
+  "documents": [
+    {
+      "title": "신경망 소개",
+      "file": "01_신경망_소개.md",
+      "source_path": "translations/ko/lessons/3-NeuralNetworks/README.md",
+      "source_url": "https://github.com/microsoft/AI-For-Beginners/blob/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/3-NeuralNetworks/README.md",
+      "download_url": "https://raw.githubusercontent.com/microsoft/AI-For-Beginners/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/3-NeuralNetworks/README.md",
+      "sha256": "a73fa26c75741fbb0928cef85a597af6bb0333b843af1fa97e8e31029401f0e1"
+    },
+    {
+      "title": "컴퓨터 비전 소개",
+      "file": "02_컴퓨터_비전_소개.md",
+      "source_path": "translations/ko/lessons/4-ComputerVision/06-IntroCV/README.md",
+      "source_url": "https://github.com/microsoft/AI-For-Beginners/blob/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/4-ComputerVision/06-IntroCV/README.md",
+      "download_url": "https://raw.githubusercontent.com/microsoft/AI-For-Beginners/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/4-ComputerVision/06-IntroCV/README.md",
+      "sha256": "f4ab7ffccdf9aba776ec48c02b12ee2f396e0731e960c663692e29e0b07a6527"
+    },
+    {
+      "title": "윤리적이고 책임 있는 AI",
+      "file": "03_책임_있는_AI.md",
+      "source_path": "translations/ko/lessons/7-Ethics/README.md",
+      "source_url": "https://github.com/microsoft/AI-For-Beginners/blob/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/7-Ethics/README.md",
+      "download_url": "https://raw.githubusercontent.com/microsoft/AI-For-Beginners/33e781bf7bfb9b39fd27c4e4a3e592669b52cb4b/translations/ko/lessons/7-Ethics/README.md",
+      "sha256": "03d7008f411c315c52eb574b7e3bd04bc8359a829a7d6634218013300d47b4be"
+    }
+  ]
+}

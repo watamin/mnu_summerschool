@@ -801,6 +801,7 @@ def _chapter_03() -> dict:
             "한 단어를 2-gram과 3-gram으로 직접 나눌 수 있다.",
             "TF, DF, IDF가 각각 무엇을 세는지 표로 설명할 수 있다.",
             "TF와 IDF를 곱해 한 글자 조각의 TF-IDF를 계산할 수 있다.",
+            "출처가 기록된 한국어 문서 세 편에서 문서별 특징어를 찾을 수 있다.",
             "취향 문장과 메뉴를 숫자로 비교할 준비를 할 수 있다.",
         ],
         connection="‘토마토파스타를 좋아한다’라는 취향과 ‘미트볼파스타’라는 메뉴는 비슷해 보입니다. 그러나 컴퓨터는 문장의 느낌을 그대로 비교하지 못합니다. 두 문장에 함께 나타나는 글자 조각을 세어 숫자로 표현해 봅시다.",
@@ -810,6 +811,7 @@ def _chapter_03() -> dict:
             ("DF", "그 글자 조각이 들어 있는 문서의 수"),
             ("IDF", "여러 문서 중 드물게 나타나 구별에 도움 되는 정도"),
             ("TF-IDF", "한 문서 안의 중요도와 전체 문서에서의 희소성을 곱한 값"),
+            ("말뭉치", "같은 방법으로 비교하려고 모아 둔 여러 문서"),
             ("벡터", "여러 숫자를 순서대로 모은 표현"),
         ],
         concept="""
@@ -846,6 +848,12 @@ DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가
     TF-IDF = TF × IDF
 
 어떤 조각이 **이 메뉴 안에서는 자주 나오고(TF가 큼)**, **다른 메뉴에는 드물면(IDF가 큼)** TF-IDF가 커집니다. 모든 조각의 TF-IDF 값을 같은 순서로 늘어놓은 숫자 목록이 벡터입니다. 다음 장에서는 두 벡터가 가리키는 방향을 비교합니다.
+
+### 5. 실제 문서는 먼저 같은 기준으로 단어를 골라야 한다
+
+문서 한 편만 읽으면 어떤 단어가 그 글만의 특징인지 판단하기 어렵습니다. 주제가 다른 여러 문서를 한데 모은 **말뭉치**에서 TF와 IDF를 함께 계산해야 합니다. 이 장에서는 공개 라이선스로 배포된 한국어 AI 입문 문서 세 편을 직접 파일로 읽습니다.
+
+한국어는 `이미지`, `이미지를`, `이미지는`처럼 조사가 붙습니다. 전문 형태소 분석기를 쓰면 이를 더 정교하게 나눌 수 있지만, 이번 활동에서는 원리를 눈으로 확인하는 것이 먼저입니다. `[가-힣]{{2,}}`라는 규칙으로 한글 두 글자 이상을 찾고, `있습니다`, `그리고`처럼 주제를 구별하기 어려운 자주 쓰는 말은 작은 불용어 목록에서 뺍니다. 따라서 결과는 완벽한 국어 분석이 아니라 **같은 단순 규칙으로 세 문서를 공정하게 비교한 결과**입니다.
 """,
         hand_example="""
 종이에 `파스타`를 쓰고 단어 앞뒤에 경계 표시 `·`를 붙여 `·파스타·`로 만드세요.
@@ -864,7 +872,7 @@ DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가
 
 `피자`는 한 문서에만 있으므로 A 문서를 구별하는 더 강한 단서가 됩니다. 여기서 O의 총개수를 세는 것이 DF입니다.
 """,
-        prediction="- `파스타`의 경계를 포함한 2-gram은 네 개이다.\n- 세 문서 중 한 문서에만 있는 `피자`의 IDF가 두 문서에 있는 `파스`의 IDF보다 크다.\n- ‘파스타, 피자’를 좋아하는 가상 취향은 파스타·피자 메뉴와 가장 높은 유사도를 보인다.",
+        prediction="- `파스타`의 경계를 포함한 2-gram은 네 개이다.\n- 세 문서 중 한 문서에만 있는 `피자`의 IDF가 두 문서에 있는 `파스`의 IDF보다 크다.\n- 신경망 문서에는 `뉴런`, 컴퓨터 비전 문서에는 `이미지`, 책임 있는 AI 문서에는 `책임`이 높은 특징어로 나타날 것이다.\n- ‘파스타, 피자’를 좋아하는 가상 취향은 파스타·피자 메뉴와 가장 높은 유사도를 보인다.",
         code_sections=[
             (
                 "움직이는 창으로 n-gram 만들기",
@@ -961,6 +969,82 @@ print("A 문서에서 '피자'의 TF-IDF:", round(rare_tfidf_in_a, 3))
 """,
             ),
             (
+                "내려받은 한국어 문서 세 편에서 특징어 찾기",
+                """
+from collections import Counter
+from hashlib import sha256
+import json
+import math
+import re
+
+corpus_folder = PROJECT_ROOT / "data" / "tfidf_korean_documents"
+manifest = json.loads(
+    (corpus_folder / "sources.json").read_text(encoding="utf-8")
+)
+
+documents = []
+verification_results = []
+for source in manifest["documents"]:
+    document_path = corpus_folder / source["file"]
+    document_bytes = document_path.read_bytes()
+    actual_sha256 = sha256(document_bytes).hexdigest()
+    is_verified = actual_sha256 == source["sha256"]
+    verification_results.append(is_verified)
+    if not is_verified:
+        raise ValueError(f"원문 확인 실패: {source['file']}")
+    document_text = document_bytes.decode("utf-8")
+    documents.append((source["title"], document_text))
+    print(source["title"], "→", len(document_text), "글자 · 원문 확인", is_verified)
+
+stop_words = {
+    "그리고", "그러나", "하지만", "또한", "대한", "대해", "위해",
+    "통해", "있는", "있습니다", "있으며", "합니다", "됩니다",
+    "입니다", "것을", "것이", "같은", "이러한", "다음", "가장",
+    "사용", "사용할", "사용하여", "우리는", "여기서", "이를",
+}
+
+def count_korean_words(text):
+    words = re.findall(r"[가-힣]{2,}", text)
+    return Counter(word for word in words if word not in stop_words)
+
+document_counts = [count_korean_words(text) for _, text in documents]
+document_count = len(document_counts)
+all_words = set().union(*(counts.keys() for counts in document_counts))
+word_df = {
+    word: sum(word in counts for counts in document_counts)
+    for word in all_words
+}
+
+document_top_terms = {}
+for (title, _), counts in zip(documents, document_counts):
+    total_words = sum(counts.values())
+    tfidf_by_word = {}
+    for word, count in counts.items():
+        tf = count / total_words
+        idf = math.log((document_count + 1) / (word_df[word] + 1)) + 1
+        tfidf_by_word[word] = tf * idf
+    ranked_terms = sorted(
+        tfidf_by_word.items(), key=lambda item: (-item[1], item[0])
+    )[:8]
+    document_top_terms[title] = [word for word, _ in ranked_terms]
+    print(f"\\n[{title}] 특징어")
+    for rank, (word, score) in enumerate(ranked_terms, 1):
+        print(rank, word, round(score, 4))
+
+document_sources_verified = all(verification_results)
+""",
+                "세 문서 모두 고정된 원문의 SHA-256과 일치했습니다. 세 글에서 흔한 말보다 한 문서 안에서 자주 나오고 다른 문서에서는 드문 말이 위쪽에 나타납니다. 조사까지 완전히 떼지 않은 간단한 방식이므로 비슷한 낱말이 따로 보일 수 있습니다.",
+                """
+1. `sources.json`에서 파일명·제목·원문 SHA-256을 읽습니다.<br>
+2. `sha256(document_bytes).hexdigest()`로 현재 파일의 지문을 만들고 기록된 값과 비교합니다.<br>
+3. `re.findall(r"[가-힣]{2,}", text)`는 한글 두 글자 이상인 덩어리만 찾습니다.<br>
+4. `Counter`는 문서 안에서 각 단어가 몇 번 나왔는지 세어 TF의 재료를 만듭니다.<br>
+5. `word_df`는 각 단어를 포함한 문서 수를 세고, 앞에서 배운 식으로 IDF를 구합니다.<br>
+6. 문서마다 `TF × IDF`가 큰 여덟 단어를 정렬해 특징어로 보여 줍니다.<br>
+7. 이 결과는 세 문서 안에서의 상대적인 특징이며, 단어의 절대적인 중요도를 판정한 것이 아닙니다.
+""",
+            ),
+            (
                 "가상 취향과 다섯 메뉴 비교",
                 """
 query = "파스타 피자 면"
@@ -978,6 +1062,9 @@ chapter_result = {
     "two_grams": two_grams,
     "common_idf": common_idf,
     "rare_idf": rare_idf,
+    "document_count": document_count,
+    "document_top_terms": document_top_terms,
+    "document_sources_verified": document_sources_verified,
 }
 """,
                 "유사도는 0에 가까울수록 공통 글자 특징이 적고, 1에 가까울수록 방향이 비슷합니다. 점수는 만족도나 건강 점수가 아닙니다.",
@@ -1004,6 +1091,8 @@ print("유사도:", round(float(practice_scores[best_index]), 3))
             "DF는 한 조각의 총 반복 횟수와 어떻게 다른가요?",
             "DF가 작아지면 IDF가 커지는 까닭을 식의 나눗셈과 연결해 설명해 보세요.",
             "TF-IDF는 어떤 두 값을 곱한 것인가요?",
+            "실제 한국어 문서에서 불용어를 빼는 까닭은 무엇인가요?",
+            "문서의 SHA-256을 확인하는 까닭은 무엇인가요?",
             "TF-IDF 유사도가 높으면 반드시 맛있거나 건강하다는 뜻인가요?",
         ],
         check_answer="""
@@ -1012,13 +1101,17 @@ print("유사도:", round(float(practice_scores[best_index]), 3))
 3. DF는 같은 문서 안에서 몇 번 반복됐는지가 아니라 그 조각을 포함한 문서가 몇 개인지를 셉니다.<br>
 4. DF가 작아지면 `(전체 문서 수+1)/(DF+1)`의 분모가 작아져 나눈 값과 IDF가 커집니다.<br>
 5. 한 문서 안에서의 비율인 TF와 여러 문서에서의 희소성인 IDF를 곱합니다.<br>
-6. 아닙니다. 입력한 취향 글자와 메뉴 글자의 특징이 비슷하다는 뜻뿐입니다.
+6. `있습니다`, `그리고`처럼 여러 글에 흔하지만 주제를 구별하는 데 도움이 적은 말을 제외하기 위해서입니다.<br>
+7. 내려받은 파일이 준비할 때 확인한 원문과 같은지, 빠지거나 바뀌지 않았는지 확인하기 위해서입니다.<br>
+8. 아닙니다. 입력한 취향 글자와 메뉴 글자의 특징이 비슷하다는 뜻뿐입니다.
 """,
         summary=[
             "문자 n-gram은 n칸짜리 창을 한 칸씩 옮겨 만드는 연속 글자 조각이다.",
             "TF는 한 문서 안의 비율, DF는 그 조각을 포함한 문서 수다.",
             "IDF는 여러 문서에서 드문 조각에 더 큰 값을 준다.",
             "TF-IDF는 한 메뉴에서 자주 나오면서 전체에서는 드문 특징을 크게 본다.",
+            "출처가 다른 실제 문서도 같은 단어 분리 규칙과 TF-IDF 식으로 특징어를 비교할 수 있다.",
+            "SHA-256은 내려받은 문서가 준비한 원문과 같은지 확인하는 파일 지문이다.",
             "텍스트 유사도는 취향 표현의 가까움이지 정답이 아니다.",
         ],
         next_text="04장에서는 벡터의 방향을 비교하고 숫자 특징이 비슷한 식단을 묶습니다.",
