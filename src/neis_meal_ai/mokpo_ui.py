@@ -62,6 +62,25 @@ def _message_chatbot_component(gradio_module: object, *, label: str):
     return chatbot(**kwargs)
 
 
+def _student_rating_dataframe_component(gradio_module: object):
+    """Gradio 4에서는 없는 고정 열 옵션을 지원 버전에서만 사용한다."""
+
+    dataframe = getattr(gradio_module, "Dataframe")
+    kwargs: dict[str, object] = {
+        "headers": ["순서", "음식", "구분", "평점"],
+        "datatype": ["number", "str", "str", "number"],
+        "value": pd.DataFrame(columns=["순서", "음식", "구분", "평점"]),
+        "label": "내 음식 30개 평가표",
+        "interactive": True,
+    }
+    parameters = inspect.signature(dataframe).parameters
+    if "static_columns" in parameters:
+        kwargs["static_columns"] = [0, 1, 2]
+    if "pinned_columns" in parameters:
+        kwargs["pinned_columns"] = 3
+    return dataframe(**kwargs)
+
+
 def _recommendation_table(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[
         ["date", "school_name", "content_score", "menu_text", "prediction_reason"]
@@ -894,15 +913,7 @@ def create_mokpo_app(
                 with gr.Row():
                     profile_load_button = gr.Button("내 평가표 불러오기")
                     profile_save_button = gr.Button("평점 저장", variant="primary")
-                profile_table = gr.Dataframe(
-                    headers=["순서", "음식", "구분", "평점"],
-                    datatype=["number", "str", "str", "number"],
-                    value=pd.DataFrame(columns=["순서", "음식", "구분", "평점"]),
-                    label="내 음식 30개 평가표",
-                    interactive=True,
-                    static_columns=[0, 1, 2],
-                    pinned_columns=3,
-                )
+                profile_table = _student_rating_dataframe_component(gr)
 
         if profile_store is not None:
             with gr.Tab("학생 행렬분해 실험"):

@@ -14,6 +14,7 @@ import mokpo_service
 from neis_meal_ai.mokpo_data import MokpoDataset, load_mokpo_dataset, load_validation_menus
 from neis_meal_ai.mokpo_ui import (
     _message_chatbot_component,
+    _student_rating_dataframe_component,
     add_feedback_callback,
     analyze_uploaded_feedback_callback,
     analyze_feedback_callback,
@@ -134,6 +135,56 @@ def test_message_chatbot_component_supports_gradio_4_and_6_signatures() -> None:
 
     assert legacy_calls == [{"label": "이전 버전", "type": "messages"}]
     assert current_calls == [{"label": "현재 버전"}]
+
+
+def test_student_rating_table_supports_gradio_4_and_6_signatures() -> None:
+    legacy_calls: list[dict[str, object]] = []
+    current_calls: list[dict[str, object]] = []
+
+    class LegacyDataframe:
+        def __init__(
+            self, *, headers, datatype, value, label, interactive
+        ) -> None:
+            legacy_calls.append(
+                {"label": label, "interactive": interactive, "headers": headers}
+            )
+
+    class CurrentDataframe:
+        def __init__(
+            self,
+            *,
+            headers,
+            datatype,
+            value,
+            label,
+            interactive,
+            static_columns,
+            pinned_columns,
+        ) -> None:
+            current_calls.append(
+                {
+                    "static_columns": static_columns,
+                    "pinned_columns": pinned_columns,
+                }
+            )
+
+    _student_rating_dataframe_component(
+        SimpleNamespace(Dataframe=LegacyDataframe)
+    )
+    _student_rating_dataframe_component(
+        SimpleNamespace(Dataframe=CurrentDataframe)
+    )
+
+    assert legacy_calls == [
+        {
+            "label": "내 음식 30개 평가표",
+            "interactive": True,
+            "headers": ["순서", "음식", "구분", "평점"],
+        }
+    ]
+    assert current_calls == [
+        {"static_columns": [0, 1, 2], "pinned_columns": 3}
+    ]
 
 
 def test_meal_chat_callback_grounds_answer_in_selected_school_values() -> None:
