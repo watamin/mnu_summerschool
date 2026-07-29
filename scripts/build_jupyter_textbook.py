@@ -390,65 +390,179 @@ def _chapter_01() -> dict:
         minutes=110,
         objectives=[
             "API의 요청과 응답을 식당 주문에 비유해 설명할 수 있다.",
-            "JSON에서 키와 값을 구분할 수 있다.",
+            "JSON의 객체·배열·키·값을 구분하고 중첩된 값까지 찾아갈 수 있다.",
+            "요청 주소와 조건을 확인한 뒤 NEIS API에 GET 요청을 보낼 수 있다.",
             "학교명보다 학교 코드가 정확한 식별값인 이유를 말할 수 있다.",
         ],
         connection="사람은 학교 급식표를 화면에서 읽지만 프로그램은 정해진 주소와 조건으로 데이터를 요청합니다. NEIS API에 학교 코드와 날짜를 보내고, 돌아온 JSON에서 메뉴를 찾습니다.",
         keywords=[
             ("API", "다른 서비스에 정해진 규칙으로 데이터를 요청하는 창구"),
             ("요청", "주소와 조건을 서버에 보내는 일"),
-            ("JSON", "키와 값으로 데이터를 표현하는 형식"),
+            ("JSON", "중괄호와 대괄호로 데이터의 구조를 나타내는 문자열 형식"),
+            ("객체", "중괄호 안에 키와 값을 짝지어 모은 구조"),
+            ("배열", "대괄호 안에 값을 순서대로 모은 구조"),
+            ("GET", "서버에 자료를 달라고 요청하는 대표적인 HTTP 방식"),
             ("학교 코드", "같은 이름의 학교를 구분하는 공식 식별값"),
         ],
         concept="""
 API는 급식실 주문 창구와 비슷합니다. ‘남악고등학교, 2026년 6월 24일 급식’을 정해진 양식으로 요청하면 서버가 정해진 양식의 응답을 줍니다.
 
-JSON은 사물함에 이름표를 붙인 모습과 비슷합니다. **MLSV_YMD**라는 키에는 날짜 값이, **DDISH_NM**이라는 키에는 메뉴 값이 들어 있습니다. 키를 알면 긴 응답에서 필요한 값을 정확히 찾을 수 있습니다.
+### 1. JSON은 데이터의 모양을 적는 규칙
+
+JSON은 데이터를 주고받을 때 많이 쓰는 **문자열 형식**입니다.
+
+- `{ }`는 **객체**입니다. 이름표인 키와 실제 값이 `:`을 사이에 두고 짝을 이룹니다.
+- `[ ]`는 **배열**입니다. 여러 값을 순서대로 담고, 위치 번호는 0부터 셉니다.
+- 키와 글자 값은 큰따옴표로 감쌉니다.
+- 한 객체 안의 여러 쌍, 한 배열 안의 여러 값은 쉼표로 나눕니다.
+
+JSON 문자열을 `json.loads()`에 넣으면 Python이 다룰 수 있는 사전과 목록으로 바뀝니다. JSON 객체는 Python의 `dict`, JSON 배열은 `list`가 됩니다.
+
+### 2. 안쪽 값은 바깥쪽부터 한 칸씩 찾기
+
+NEIS 응답은 상자 안에 상자가 든 구조입니다. `mealServiceDietInfo` 배열의 두 번째 칸에 `row`가 있고, 그 배열의 첫 번째 칸에 하루 급식 객체가 있습니다. 마지막으로 **MLSV_YMD** 키에서 날짜를, **DDISH_NM** 키에서 메뉴를 읽습니다.
+
+    응답 → mealServiceDietInfo → 두 번째 칸[1] → row → 첫 번째 칸[0] → DDISH_NM
+
+한 번에 외우지 말고, 각 단계에서 `type()`과 `keys()`를 출력해 현재 위치를 확인하면 됩니다.
+
+### 3. API 요청은 주소와 조건으로 나뉜다
+
+요청 주소는 `https://open.neis.go.kr/hub/mealServiceDietInfo`입니다. 교육청 코드, 학교 코드, 날짜 같은 조건은 `params` 사전에 넣습니다. `requests.get()`은 주소와 조건을 합쳐 GET 요청을 보내고, 서버는 상태 코드와 JSON 응답을 돌려줍니다.
+
+공식 안내에 따르면 인증키를 쓰지 않은 호출은 샘플 자료 5건으로 제한됩니다. 수업에서는 먼저 짧은 샘플 요청을 보내고, 별도 인증키를 사용할 때는 코드에 적지 않고 `NEIS_API_KEY` 환경 변수에서 읽습니다.
 """,
         hand_example="""
-다음 작은 JSON에서 키와 값을 각각 표시해 보세요.
+다음 JSON에서 중괄호, 대괄호, 키, 값을 다른 색으로 표시해 보세요.
 
-    {"school": "남악고등학교", "date": "20260624"}
+    {
+      "school": "남악고등학교",
+      "meal": {
+        "date": "20260624",
+        "dishes": ["양송이스프", "미트볼로제파스타"]
+      }
+    }
 
-키는 school과 date이고, 값은 남악고등학교와 20260624입니다.
+`school`의 값은 글자 하나이고, `meal`의 값은 또 다른 객체입니다. `dishes`의 값은 두 메뉴가 들어 있는 배열입니다. Python으로 바꾼 뒤 두 번째 메뉴를 찾는 경로는 `data["meal"]["dishes"][1]`입니다. 마지막 `[1]`이 두 번째 칸인 까닭은 위치 번호가 0부터 시작하기 때문입니다.
 """,
-        prediction="- 원본 행 수는 5이다.\n- 첫 행의 키 목록에 MLSV_YMD와 DDISH_NM이 있다.",
+        prediction="- JSON 연습에서 두 번째 메뉴는 ‘미트볼로제파스타’이다.\n- 요청 미리보기 주소에는 학교 코드 7140272가 들어간다.\n- 원본 첫 행의 키 목록에는 MLSV_YMD와 DDISH_NM이 있다.",
         code_sections=[
             (
-                "원본 JSON 행 관찰",
+                "JSON 문자열을 Python 자료로 바꾸기",
                 SETUP_CODE
                 + """
-first_row = raw_rows[0]
-first_keys = sorted(first_row.keys())
-print("첫 행의 키:")
-print(first_keys)
-print("날짜 값:", first_row["MLSV_YMD"])
-print("메뉴 원문:", first_row["DDISH_NM"][:100] + "...")
+import json
+
+practice_json_text = '''{
+  "school": "남악고등학교",
+  "meal": {
+    "date": "20260624",
+    "dishes": ["양송이스프", "미트볼로제파스타"]
+  }
+}'''
+practice_data = json.loads(practice_json_text)
+json_practice_menu = practice_data["meal"]["dishes"][1]
+
+print("바깥 자료형:", type(practice_data).__name__)
+print("바깥 키:", list(practice_data.keys()))
+print("meal의 자료형:", type(practice_data["meal"]).__name__)
+print("dishes의 자료형:", type(practice_data["meal"]["dishes"]).__name__)
+print("두 번째 메뉴:", json_practice_menu)
 """,
-                "키는 데이터의 이름표입니다. 메뉴 원문에는 HTML 줄바꿈과 괄호 속 번호가 아직 섞여 있습니다.",
+                "JSON 문자열이 Python 사전으로 바뀌었습니다. 바깥 객체에서 `meal` 객체로, 다시 `dishes` 배열로 들어간 뒤 위치 번호 1의 값을 읽었습니다.",
                 """
-1. `raw_rows[0]`은 첫 번째 급식 기록 한 행을 고릅니다.<br>
-2. `first_row.keys()`는 그 행에 들어 있는 모든 키를 가져옵니다.<br>
-3. `first_row["MLSV_YMD"]`처럼 대괄호 안에 키를 쓰면 해당 값을 읽습니다.
+1. `practice_json_text`는 아직 글자로 된 JSON입니다.<br>
+2. `json.loads(...)`는 JSON 객체와 배열을 Python의 사전과 목록으로 바꿉니다.<br>
+3. `practice_data["meal"]`은 `meal` 키의 안쪽 객체를 고릅니다.<br>
+4. `["dishes"][1]`은 메뉴 배열의 두 번째 값을 고릅니다.<br>
+5. `type(...).__name__`은 현재 값이 사전인지 목록인지 확인합니다.
 """,
             ),
             (
-                "요청 조건을 사전으로 만들기",
+                "NEIS 중첩 응답에서 메뉴 찾아가기",
                 """
+practice_neis_payload = {
+    "mealServiceDietInfo": [
+        {"head": [{"list_total_count": 1}]},
+        {"row": [raw_rows[0]]},
+    ]
+}
+
+dataset_parts = practice_neis_payload["mealServiceDietInfo"]
+row_list = dataset_parts[1]["row"]
+first_row = row_list[0]
+first_keys = sorted(first_row.keys())
+
+print("1단계 dataset_parts:", type(dataset_parts).__name__, "길이", len(dataset_parts))
+print("2단계 row_list:", type(row_list).__name__, "길이", len(row_list))
+print("3단계 first_row:", type(first_row).__name__)
+print("4단계 날짜:", first_row["MLSV_YMD"])
+print("5단계 메뉴:", first_row["DDISH_NM"][:80] + "...")
+""",
+                "긴 경로도 바깥에서 안쪽으로 나누면 어렵지 않습니다. `list → dict → list → dict`처럼 현재 자료형을 확인하며 한 칸씩 이동했습니다.",
+                """
+1. `practice_neis_payload["mealServiceDietInfo"]`는 가장 바깥 키의 배열을 꺼냅니다.<br>
+2. `[1]`은 배열의 두 번째 객체를 고릅니다. 첫 번째 `[0]`에는 응답 설명인 `head`가 있습니다.<br>
+3. `["row"]`는 급식 행 배열을 고르고, 다시 `[0]`으로 첫 급식 행을 고릅니다.<br>
+4. 마지막 사전에서 `MLSV_YMD`와 `DDISH_NM` 값을 읽습니다.<br>
+5. 중간 결과를 여러 변수로 나누면 오류가 난 위치를 찾기 쉽습니다.
+""",
+            ),
+            (
+                "NEIS 요청 주소를 만들고 GET 함수 준비하기",
+                """
+import os
+import requests
+
+NEIS_MEAL_URL = "https://open.neis.go.kr/hub/mealServiceDietInfo"
 request_params = {
+    "Type": "json",
+    "pIndex": 1,
+    "pSize": 5,
     "ATPT_OFCDC_SC_CODE": "Q10",
     "SD_SCHUL_CODE": "7140272",
     "MLSV_FROM_YMD": "20260624",
     "MLSV_TO_YMD": "20260630",
 }
-for key, value in request_params.items():
-    print(f"{key} → {value}")
+
+api_key = os.getenv("NEIS_API_KEY", "").strip()
+if api_key:
+    request_params["KEY"] = api_key
+
+preview_params = {
+    key: value for key, value in request_params.items() if key != "KEY"
+}
+prepared_request = requests.Request(
+    "GET", NEIS_MEAL_URL, params=preview_params
+).prepare()
+prepared_request_url = prepared_request.url
+
+def request_neis_meals(params, *, http_get=requests.get):
+    response = http_get(NEIS_MEAL_URL, params=params, timeout=15)
+    response.raise_for_status()
+    safe_params = {key: value for key, value in params.items() if key != "KEY"}
+    safe_url = requests.Request(
+        "GET", NEIS_MEAL_URL, params=safe_params
+    ).prepare().url
+    return response.json(), safe_url, response.status_code
+
+print("요청 방식: GET")
+print("요청 주소:", NEIS_MEAL_URL)
+print("요청 조건 수:", len(request_params))
+print("실제로 전송될 주소:", prepared_request_url)
+print("인증키:", "환경 변수에서 읽음" if api_key else "샘플 호출(최대 5건)")
 """,
-                "Q10은 전라남도교육청 코드, 7140272는 남악고등학교 코드입니다. 날짜는 YYYYMMDD 여덟 자리입니다.",
+                "아직 서버에 보내지는 않았지만, 주소와 조건이 합쳐진 모습을 확인했습니다. 실제 요청 함수는 15초 안에 응답이 없으면 멈추고, HTTP 오류가 있으면 그대로 알려 줍니다.",
                 """
-1. `request_params`는 NEIS에 보낼 조건을 키와 값으로 묶은 사전입니다.<br>
-2. `ATPT_OFCDC_SC_CODE`와 `SD_SCHUL_CODE`가 교육청과 학교를 구분합니다.<br>
-3. `items()`는 요청 조건을 한 쌍씩 꺼내 확인하게 합니다.
+1. `NEIS_MEAL_URL`은 급식식단정보 API의 고정 주소입니다.<br>
+2. `request_params`는 JSON 형식, 페이지, 학교, 기간을 키와 값으로 묶습니다.<br>
+3. `preview_params`는 화면에 보여 줄 조건에서 인증키를 제외합니다.<br>
+4. `requests.Request(...).prepare()`는 요청을 보내지 않고 안전한 미리보기 URL만 만듭니다.<br>
+5. `requests.get(..., timeout=15)`가 실제 GET 요청을 보냅니다.<br>
+6. `raise_for_status()`는 404나 500 같은 HTTP 오류를 성공으로 착각하지 않게 합니다.<br>
+7. `response.json()`은 응답 JSON을 Python 사전과 목록으로 바꿉니다.<br>
+8. 함수 안의 `safe_params`도 인증키를 뺀 응답 주소만 화면에 돌려줍니다.<br>
+9. 인증키가 있더라도 URL이나 화면에 출력하지 않습니다.
 """,
             ),
             (
@@ -482,6 +596,9 @@ chapter_result = {
     "source": classroom_source,
     "raw_rows": len(classroom_frame),
     "first_keys": first_keys,
+    "json_practice_menu": json_practice_menu,
+    "prepared_request_url": prepared_request_url,
+    "live_request_sent": False,
 }
 """,
                 "실시간 조회가 실패해도 같은 학교·같은 기간의 예비 자료가 있을 때만 전환됩니다. 기간이 겹치지 않으면 조용히 다른 날짜를 쓰지 않고 정확한 안내를 보여 줍니다.",
@@ -492,32 +609,50 @@ chapter_result = {
 """,
             ),
         ],
-        exercise_text="LIVE_EXPERIMENT를 True로 바꾸면 공식 NEIS에서 남악고의 실제 급식을 요청합니다. 성공하면 실시간 자료를, 연결이 실패하면 같은 기간의 예비 자료를 사용합니다.",
+        exercise_text="아래의 SEND_LIVE_REQUEST를 True로 바꾸면 방금 만든 함수가 공식 NEIS 서버에 GET 요청을 한 번 보냅니다. 먼저 False 상태에서 안내를 읽고, 요청 주소에 학교 코드와 날짜가 맞는지 확인한 뒤 True로 바꾸세요. 인증키가 없다면 공식 포털의 샘플 호출 제한에 따라 최대 5건만 받을 수 있습니다.",
         exercise_code="""
-LIVE_EXPERIMENT = False
-if LIVE_EXPERIMENT:
+SEND_LIVE_REQUEST = False
+live_request_sent = False
+
+if SEND_LIVE_REQUEST:
     try:
-        live_frame, live_source = load_classroom_frame(PROJECT_ROOT)
-        print("실험 데이터 출처:", live_source)
-        print(live_frame[["date", "menu_text"]].head().to_string(index=False))
-    except (NeisApiError, ValueError) as error:
-        print("NEIS 조회 안내:", error)
+        live_payload, response_url, status_code = request_neis_meals(request_params)
+        live_request_sent = True
+        print("응답 상태 코드:", status_code)
+        print("보낸 주소:", response_url)
+        if "mealServiceDietInfo" in live_payload:
+            live_rows = live_payload["mealServiceDietInfo"][1]["row"]
+            print("받은 급식 행 수:", len(live_rows))
+            print("첫 급식 날짜:", live_rows[0]["MLSV_YMD"])
+            print("첫 메뉴:", live_rows[0]["DDISH_NM"][:100] + "...")
+        else:
+            print("급식 행 대신 안내 응답이 왔습니다:", live_payload)
+    except (requests.RequestException, ValueError, KeyError, IndexError) as error:
+        print("요청 또는 JSON 읽기 안내:", error)
 else:
-    print("기본 학습 모드: 위에서 검증한 예비 자료 사용")
+    print("기본값은 전송하지 않습니다. 주소와 조건을 확인한 뒤 True로 바꾸세요.")
+
+chapter_result["live_request_sent"] = live_request_sent
 """,
         check_questions=[
-            "API 요청에 학교 코드와 날짜가 필요한 이유는 무엇인가요?",
-            "JSON의 키와 값은 각각 어떤 역할을 하나요?",
+            "JSON의 `{ }`와 `[ ]`는 각각 무엇을 뜻하나요?",
+            "`data[\"meal\"][\"dishes\"][1]`에서 마지막 `[1]`은 무엇을 고르나요?",
+            "NEIS 요청에서 URL과 params는 각각 어떤 역할을 하나요?",
+            "`status_code`, `raise_for_status()`, `response.json()`은 차례로 무엇을 확인하거나 바꾸나요?",
             "실시간 API가 잠시 멈춰도 수업을 이어 갈 수 있는 이유는 무엇인가요?",
         ],
         check_answer="""
-1. 어떤 학교의 어느 기간 자료인지 정확히 지정하기 위해서입니다.<br>
-2. 키는 데이터의 이름표이고 값은 실제 내용입니다.<br>
-3. 같은 구조의 공식 NEIS 예비 데이터 5행을 프로젝트에 포함했기 때문입니다.
+1. 중괄호는 키와 값을 묶은 객체, 대괄호는 순서가 있는 배열입니다.<br>
+2. 위치 번호는 0부터 시작하므로 메뉴 배열의 두 번째 값을 고릅니다.<br>
+3. URL은 어느 API 창구로 갈지, params는 어느 학교의 어느 기간 자료를 달라고 할지 정합니다.<br>
+4. 상태 코드는 서버 처리 결과를 나타내고, `raise_for_status()`는 HTTP 오류를 확인하며, `response.json()`은 JSON 응답을 Python 자료로 바꿉니다.<br>
+5. 같은 구조의 공식 NEIS 예비 데이터 5행을 프로젝트에 포함했기 때문입니다.
 """,
         summary=[
-            "API는 규칙이 있는 데이터 요청 창구다.",
-            "JSON은 키와 값으로 구조를 표현한다.",
+            "JSON 객체는 Python 사전으로, JSON 배열은 Python 목록으로 바뀐다.",
+            "중첩된 JSON은 바깥쪽부터 자료형을 확인하며 한 칸씩 들어간다.",
+            "GET 요청은 API 주소와 params 조건을 합쳐 서버에 자료를 요청한다.",
+            "응답은 상태 코드를 확인한 뒤 JSON으로 읽는다.",
             "남악고의 공식 코드는 Q10 / 7140272다.",
         ],
         next_text="02장에서는 원본 문자열을 분석 가능한 표로 바꾸고 그래프로 읽습니다.",
@@ -663,74 +798,166 @@ def _chapter_03() -> dict:
         session="3회차 전반",
         minutes=90,
         objectives=[
-            "문자 n-gram이 무엇인지 예를 들어 설명할 수 있다.",
-            "TF와 IDF가 각각 어떤 빈도를 보는지 말할 수 있다.",
+            "한 단어를 2-gram과 3-gram으로 직접 나눌 수 있다.",
+            "TF, DF, IDF가 각각 무엇을 세는지 표로 설명할 수 있다.",
+            "TF와 IDF를 곱해 한 글자 조각의 TF-IDF를 계산할 수 있다.",
             "취향 문장과 메뉴를 숫자로 비교할 준비를 할 수 있다.",
         ],
         connection="‘토마토파스타를 좋아한다’라는 취향과 ‘미트볼파스타’라는 메뉴는 비슷해 보입니다. 그러나 컴퓨터는 문장의 느낌을 그대로 비교하지 못합니다. 두 문장에 함께 나타나는 글자 조각을 세어 숫자로 표현해 봅시다.",
         keywords=[
             ("n-gram", "연속된 n개의 글자 조각"),
             ("TF", "한 문서 안에서 글자 조각이 나타난 정도"),
+            ("DF", "그 글자 조각이 들어 있는 문서의 수"),
             ("IDF", "여러 문서 중 드물게 나타나 구별에 도움 되는 정도"),
+            ("TF-IDF", "한 문서 안의 중요도와 전체 문서에서의 희소성을 곱한 값"),
             ("벡터", "여러 숫자를 순서대로 모은 표현"),
         ],
         concept="""
-반 학생 모두가 ‘급식’이라는 말을 쓰면 그 말만으로 누가 쓴 문장인지 구별하기 어렵습니다. 반대로 한 학생만 ‘파스타’라는 말을 썼다면 강한 단서가 됩니다.
+### 1. n-gram은 움직이는 창으로 만드는 글자 조각
 
-TF는 한 메뉴 안에서 자주 나온 정도를, IDF는 여러 메뉴에 너무 흔한지 드문지를 봅니다. TF-IDF는 두 관점을 곱해 특징적인 글자 조각에 더 큰 값을 줍니다.
+컴퓨터는 문장을 뜻으로 바로 이해하지 못하므로 먼저 비교할 수 있는 작은 조각을 만듭니다. n-gram의 n은 **한 조각에 들어가는 글자 수**입니다.
 
-한국어 메뉴는 띄어쓰기가 일정하지 않을 수 있어 이 프로젝트는 단어 대신 2~4글자 문자 조각을 사용합니다.
+`파스타` 위에 두 칸짜리 창을 올리고 한 칸씩 옮기면 `파스`, `스타`가 나옵니다. 이것이 2-gram입니다. 세 칸짜리 창을 쓰면 `파스타` 하나가 나오며, 이것은 3-gram입니다.
+
+이 프로젝트는 단어 앞뒤의 경계도 구별하려고 공백을 붙입니다. 눈에 보이지 않는 공백을 `·`로 표시하면 `파스타`의 2-gram은 `·파`, `파스`, `스타`, `타·`입니다. 2글자 조각은 짧은 공통점을 잘 찾고, 3~4글자 조각은 더 구체적인 이름을 잡습니다. 그래서 한 크기만 고르지 않고 2~4글자를 함께 사용합니다.
+
+한국어 메뉴는 `치즈 파스타`, `치즈파스타`처럼 띄어쓰기가 달라질 수 있습니다. 단어 전체가 정확히 같아야 하는 방식보다 문자 조각 방식이 작은 표기 차이에서도 공통 부분을 찾기 쉽습니다.
+
+### 2. TF는 한 문장 안을 본다
+
+TF는 **Term Frequency**, 즉 한 문장 안에서 특정 조각이 차지하는 비율입니다.
+
+    TF = 그 조각이 나온 횟수 ÷ 그 문장의 전체 n-gram 수
+
+같은 조각이 많이 나오면 TF가 커집니다. 단순 횟수 대신 전체 조각 수로 나누는 까닭은 짧은 메뉴와 긴 메뉴를 조금 더 공정하게 비교하기 위해서입니다.
+
+### 3. DF와 IDF는 모든 문장을 함께 본다
+
+DF는 **Document Frequency**입니다. 어떤 조각이 총 몇 번 반복됐는지가 아니라, 그 조각을 포함한 문서가 몇 개인지를 셉니다. 한 문서에서 열 번 반복되어도 DF에는 문서 한 개로 셉니다.
+
+반 학생 모두가 ‘급식’이라는 말을 쓰면 그 말만으로 누가 쓴 문장인지 구별하기 어렵습니다. 반대로 한 학생만 ‘파스타’라는 말을 썼다면 강한 단서가 됩니다. IDF는 이런 차이를 숫자로 나타냅니다.
+
+    IDF = log((전체 문서 수 + 1) ÷ (DF + 1)) + 1
+
+DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가 작아집니다. `log`는 드문 조각의 값이 지나치게 커지지 않도록 눌러 줍니다. 식의 `+1`은 문서가 적거나 처음 보는 조각이 있어도 안전하게 계산하기 위한 장치입니다.
+
+### 4. TF-IDF는 두 관점을 합친다
+
+    TF-IDF = TF × IDF
+
+어떤 조각이 **이 메뉴 안에서는 자주 나오고(TF가 큼)**, **다른 메뉴에는 드물면(IDF가 큼)** TF-IDF가 커집니다. 모든 조각의 TF-IDF 값을 같은 순서로 늘어놓은 숫자 목록이 벡터입니다. 다음 장에서는 두 벡터가 가리키는 방향을 비교합니다.
 """,
         hand_example="""
-‘파스타’를 2글자 조각으로 나누면 ‘파스’, ‘스타’가 됩니다.<br>
-‘치즈파스타’에도 같은 조각이 있는지 찾아 동그라미를 쳐 보세요.
+종이에 `파스타`를 쓰고 단어 앞뒤에 경계 표시 `·`를 붙여 `·파스타·`로 만드세요.
 
-이제 A=`파스타 피자`, B=`파스타`, C=`밥 국` 세 문장을 생각합니다. `파스`는 3개 중 2개에 있지만 `피자`는 1개에만 있습니다. 따라서 `피자`의 IDF가 더 커서 A를 구별하는 특징이 됩니다. 이 장의 계산식은 `IDF = log((전체 문장 수+1)/(그 조각이 있는 문장 수+1))+1`입니다.
+| 창 크기 | 창을 한 칸씩 옮긴 결과 |
+|---|---|
+| 2-gram | `·파`, `파스`, `스타`, `타·` |
+| 3-gram | `·파스`, `파스타`, `스타·` |
+
+이제 A=`파스타 피자`, B=`파스타`, C=`밥 국` 세 문서에서 두 조각을 비교합니다.
+
+| 조각 | A에 있음 | B에 있음 | C에 있음 | DF | IDF의 크기 |
+|---|---:|---:|---:|---:|---|
+| `파스` | O | O | X | 2 | 비교적 작음 |
+| `피자` | O | X | X | 1 | 비교적 큼 |
+
+`피자`는 한 문서에만 있으므로 A 문서를 구별하는 더 강한 단서가 됩니다. 여기서 O의 총개수를 세는 것이 DF입니다.
 """,
-        prediction="- ‘파스타, 피자’를 좋아하는 가상 취향은 파스타·피자 메뉴와 가장 높은 유사도를 보인다.",
+        prediction="- `파스타`의 경계를 포함한 2-gram은 네 개이다.\n- 세 문서 중 한 문서에만 있는 `피자`의 IDF가 두 문서에 있는 `파스`의 IDF보다 크다.\n- ‘파스타, 피자’를 좋아하는 가상 취향은 파스타·피자 메뉴와 가장 높은 유사도를 보인다.",
         code_sections=[
             (
-                "문자 n-gram 관찰",
+                "움직이는 창으로 n-gram 만들기",
                 SETUP_CODE
                 + """
 from neis_meal_ai.recommender import _char_ngrams, _tfidf_similarity
 
+ngram_word = "파스타"
+padded_word = f" {ngram_word} "
+two_grams = [
+    padded_word[index : index + 2].replace(" ", "·")
+    for index in range(len(padded_word) - 1)
+]
+three_grams = [
+    padded_word[index : index + 3].replace(" ", "·")
+    for index in range(len(padded_word) - 2)
+]
+
+print("경계를 표시한 단어:", padded_word.replace(" ", "·"))
+print("2-gram:", two_grams)
+print("3-gram:", three_grams)
+
 example = "치즈 파스타"
 grams = _char_ngrams(example)
-print("2~4글자 조각 일부:")
+print("\\n추천기가 만든 2~4글자 조각 일부:")
 print(list(grams.items())[:15])
 """,
-                "공백 주변에도 표시를 더해 단어의 시작과 끝을 구별합니다. 같은 조각이 반복되면 빈도가 올라갑니다.",
+                "두 칸짜리 창을 한 칸씩 옮겨 네 개의 2-gram을 만들었습니다. 추천기는 각 단어에 같은 방법을 적용하고, 2·3·4글자 조각을 모두 모읍니다.",
                 """
-1. `_char_ngrams`는 문장을 2~4글자 조각과 반복 횟수로 바꿉니다.<br>
-2. `example`은 관찰할 한 문장을 저장합니다.<br>
-3. `_char_ngrams(example)`의 결과는 조각을 키, 반복 횟수를 값으로 가집니다.<br>
-4. `list(grams.items())[:15]`는 조각이 너무 많지 않도록 앞의 15개만 보여 줍니다.
+1. `padded_word`는 단어 앞뒤에 공백을 붙여 경계를 표시합니다.<br>
+2. `range(len(padded_word) - 1)`은 두 칸짜리 창이 시작할 위치를 만듭니다.<br>
+3. `padded_word[index : index + 2]`는 현재 위치부터 두 글자를 자릅니다.<br>
+4. 화면에서 경계가 보이도록 공백을 `·`로 바꿉니다. 실제 계산에서는 공백을 그대로 씁니다.<br>
+5. `_char_ngrams(example)`은 같은 과정을 2·3·4글자 창으로 반복하고 조각별 횟수를 셉니다.
 """,
             ),
             (
-                "작은 TF-IDF를 직접 계산",
+                "TF와 DF를 따로 계산하기",
                 """
 import math
 
 tiny_documents = ["파스타 피자", "파스타", "밥 국"]
-term = "피자"
 tiny_counts = [_char_ngrams(text) for text in tiny_documents]
-document_frequency = sum(term in counts for counts in tiny_counts)
-idf = math.log((len(tiny_documents) + 1) / (document_frequency + 1)) + 1
-tf = tiny_counts[0][term] / sum(tiny_counts[0].values())
-tfidf = tf * idf
+term = "피자"
+term_count_in_a = tiny_counts[0][term]
+all_ngram_count_in_a = sum(tiny_counts[0].values())
+term_tf_in_a = term_count_in_a / all_ngram_count_in_a
+term_df = sum(term in counts for counts in tiny_counts)
 
-print("전체 문장 수:", len(tiny_documents))
-print("'피자'가 있는 문장 수:", document_frequency)
-print("TF:", round(tf, 3), "IDF:", round(idf, 3), "TF-IDF:", round(tfidf, 3))
+print("A 문서의 '피자' 횟수:", term_count_in_a)
+print("A 문서의 전체 n-gram 수:", all_ngram_count_in_a)
+print("TF = 횟수 ÷ 전체 조각 수:", round(term_tf_in_a, 3))
+print("'피자'가 들어 있는 문서 수 DF:", term_df)
 """,
-                "‘피자’는 첫 문장의 전체 n-gram 중 한 번 있으므로 TF는 `1 ÷ 전체 조각 수`입니다. 세 문장 중 한 문장에만 있으므로 흔한 조각보다 큰 IDF를 얻습니다. 실제 추천기도 이 정규화 계산을 많은 글자 조각에 반복합니다.",
+                "`피자`는 A 문서 안에서 한 번 나타났습니다. TF의 분모는 A 문서에서 만들어진 모든 2~4글자 조각의 수입니다. DF는 세 문서 가운데 `피자`를 하나라도 포함한 문서만 세므로 1입니다.",
                 """
 1. `tiny_documents`는 손으로 확인할 세 문장을 저장합니다.<br>
-2. `_char_ngrams`는 각 문장의 조각별 횟수를 만들고, 다음 줄은 그 조각이 들어 있는 문장 수를 셉니다.<br>
-3. `횟수 / 전체 조각 수`가 길이가 다른 문장을 공정하게 비교하는 TF입니다.<br>
-4. `math.log(...) + 1`로 IDF를 구한 뒤 TF와 곱하면 한 문장의 TF-IDF가 됩니다.
+2. `tiny_counts[0][term]`은 A 문서 안의 `피자` 횟수를 읽습니다.<br>
+3. `sum(tiny_counts[0].values())`는 A 문서의 모든 n-gram 횟수를 더합니다.<br>
+4. 두 값을 나눈 것이 A 문서에서 `피자`가 차지하는 비율인 TF입니다.<br>
+5. `sum(term in counts for counts in tiny_counts)`는 각 문서에 조각이 있는지만 확인해 DF를 셉니다.
+""",
+            ),
+            (
+                "흔한 조각과 드문 조각의 IDF 비교하기",
+                """
+terms_to_compare = ["파스", "피자"]
+idf_by_term = {}
+
+for compared_term in terms_to_compare:
+    compared_df = sum(compared_term in counts for counts in tiny_counts)
+    compared_idf = math.log(
+        (len(tiny_documents) + 1) / (compared_df + 1)
+    ) + 1
+    idf_by_term[compared_term] = compared_idf
+    print(
+        compared_term,
+        "→ DF:", compared_df,
+        "IDF:", round(compared_idf, 3),
+    )
+
+common_idf = idf_by_term["파스"]
+rare_idf = idf_by_term["피자"]
+rare_tfidf_in_a = term_tf_in_a * rare_idf
+print("A 문서에서 '피자'의 TF-IDF:", round(rare_tfidf_in_a, 3))
+""",
+                "세 문서 중 두 문서에 있는 `파스`보다 한 문서에만 있는 `피자`의 IDF가 큽니다. A 문서에서 구한 `피자`의 TF에 이 IDF를 곱하면 `피자`의 TF-IDF가 됩니다.",
+                """
+1. `terms_to_compare`에는 흔한 조각과 드문 조각을 하나씩 넣었습니다.<br>
+2. 각 조각의 DF를 센 뒤 `log((문서 수+1)/(DF+1))+1` 식에 넣습니다.<br>
+3. DF가 작을수록 분수와 IDF가 커지는지 두 출력값을 비교합니다.<br>
+4. `idf_by_term` 사전은 조각별 IDF를 저장합니다.<br>
+5. 마지막 줄에서 A 문서의 TF와 `피자`의 IDF를 곱해 TF-IDF를 완성합니다.
 """,
             ),
             (
@@ -748,6 +975,9 @@ chapter_result = {
     "chapter": "03",
     "similarities": similarities,
     "query": query,
+    "two_grams": two_grams,
+    "common_idf": common_idf,
+    "rare_idf": rare_idf,
 }
 """,
                 "유사도는 0에 가까울수록 공통 글자 특징이 적고, 1에 가까울수록 방향이 비슷합니다. 점수는 만족도나 건강 점수가 아닙니다.",
@@ -769,18 +999,26 @@ print("가장 비슷한 메뉴:", meal_df.iloc[best_index]["menu_text"])
 print("유사도:", round(float(practice_scores[best_index]), 3))
 """,
         check_questions=[
-            "문자 2-gram은 무엇인가요?",
-            "모든 메뉴에 흔한 글자보다 일부 메뉴에만 있는 글자가 구별에 유리한 이유는 무엇인가요?",
+            "`파스타`의 경계를 포함한 문자 2-gram 네 개를 적어 보세요.",
+            "TF의 분자와 분모는 각각 무엇인가요?",
+            "DF는 한 조각의 총 반복 횟수와 어떻게 다른가요?",
+            "DF가 작아지면 IDF가 커지는 까닭을 식의 나눗셈과 연결해 설명해 보세요.",
+            "TF-IDF는 어떤 두 값을 곱한 것인가요?",
             "TF-IDF 유사도가 높으면 반드시 맛있거나 건강하다는 뜻인가요?",
         ],
         check_answer="""
-1. 연속된 두 글자 조각입니다.<br>
-2. 드문 글자가 메뉴의 특징을 더 잘 나타내기 때문입니다.<br>
-3. 아닙니다. 입력한 취향 글자와 메뉴 글자의 특징이 비슷하다는 뜻뿐입니다.
+1. `·파`, `파스`, `스타`, `타·`입니다.<br>
+2. 분자는 그 문서 안의 해당 조각 횟수, 분모는 그 문서의 전체 n-gram 수입니다.<br>
+3. DF는 같은 문서 안에서 몇 번 반복됐는지가 아니라 그 조각을 포함한 문서가 몇 개인지를 셉니다.<br>
+4. DF가 작아지면 `(전체 문서 수+1)/(DF+1)`의 분모가 작아져 나눈 값과 IDF가 커집니다.<br>
+5. 한 문서 안에서의 비율인 TF와 여러 문서에서의 희소성인 IDF를 곱합니다.<br>
+6. 아닙니다. 입력한 취향 글자와 메뉴 글자의 특징이 비슷하다는 뜻뿐입니다.
 """,
         summary=[
-            "문자 n-gram은 문장을 짧은 글자 조각으로 나눈다.",
-            "TF-IDF는 한 메뉴에서 중요하고 전체에서는 드문 특징을 크게 본다.",
+            "문자 n-gram은 n칸짜리 창을 한 칸씩 옮겨 만드는 연속 글자 조각이다.",
+            "TF는 한 문서 안의 비율, DF는 그 조각을 포함한 문서 수다.",
+            "IDF는 여러 문서에서 드문 조각에 더 큰 값을 준다.",
+            "TF-IDF는 한 메뉴에서 자주 나오면서 전체에서는 드문 특징을 크게 본다.",
             "텍스트 유사도는 취향 표현의 가까움이지 정답이 아니다.",
         ],
         next_text="04장에서는 벡터의 방향을 비교하고 숫자 특징이 비슷한 식단을 묶습니다.",

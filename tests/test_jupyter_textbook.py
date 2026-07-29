@@ -59,9 +59,22 @@ EXPECTED_RESULT_KEYS = {
         "notebook_version",
         "packages_checked",
     },
-    "01": {"source", "raw_rows", "first_keys"},
+    "01": {
+        "source",
+        "raw_rows",
+        "first_keys",
+        "json_practice_menu",
+        "prepared_request_url",
+        "live_request_sent",
+    },
     "02": {"clean_rows", "columns", "chart_ready"},
-    "03": {"similarities", "query"},
+    "03": {
+        "similarities",
+        "query",
+        "two_grams",
+        "common_idf",
+        "rare_idf",
+    },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
     "06": {
@@ -301,8 +314,14 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
 
     assert results["00"]["sample_rows"] == 5
     assert results["01"]["raw_rows"] == 5
+    assert results["01"]["json_practice_menu"] == "미트볼로제파스타"
+    assert "mealServiceDietInfo" in results["01"]["prepared_request_url"]
+    assert "SD_SCHUL_CODE=7140272" in results["01"]["prepared_request_url"]
+    assert results["01"]["live_request_sent"] is False
     assert results["02"]["clean_rows"] == 5
     assert len(results["03"]["similarities"]) == 5
+    assert results["03"]["two_grams"] == ["·파", "파스", "스타", "타·"]
+    assert results["03"]["rare_idf"] > results["03"]["common_idf"]
     assert len(results["04"]["cluster_names"]) >= 2
     assert results["05"]["recommendations"] == 3
     assert results["06"]["widget_ready"] is True
@@ -324,6 +343,86 @@ def test_api_chapter_teaches_live_meals_fallback_and_date_mismatch() -> None:
     assert "날짜가 겹치지 않을 때의 안내" in source
 
 
+def test_api_chapter_request_function_sends_expected_neis_contract(
+    tmp_path: Path,
+) -> None:
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("01")
+    )
+    namespace = _execute_code_cells(chapter_path)
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+        url = "https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json"
+
+        def raise_for_status(self) -> None:
+            captured["raised"] = True
+
+        def json(self) -> dict:
+            return {"mealServiceDietInfo": [{"head": []}, {"row": []}]}
+
+    def fake_get(url: str, *, params: dict, timeout: int) -> FakeResponse:
+        captured.update(url=url, params=params, timeout=timeout)
+        return FakeResponse()
+
+    payload, response_url, status_code = namespace["request_neis_meals"](
+        namespace["request_params"],
+        http_get=fake_get,
+    )
+
+    assert captured == {
+        "url": "https://open.neis.go.kr/hub/mealServiceDietInfo",
+        "params": namespace["request_params"],
+        "timeout": 15,
+        "raised": True,
+    }
+    assert payload == {"mealServiceDietInfo": [{"head": []}, {"row": []}]}
+    assert response_url == namespace["prepared_request_url"]
+    assert status_code == 200
+
+
+def test_api_chapter_never_puts_environment_key_in_student_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = "classroom-secret-key"
+    monkeypatch.setenv("NEIS_API_KEY", secret)
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("01")
+    )
+
+    namespace = _execute_code_cells(chapter_path)
+    captured_output = capsys.readouterr().out
+
+    class FakeResponse:
+        status_code = 200
+        url = (
+            "https://open.neis.go.kr/hub/mealServiceDietInfo"
+            f"?Type=json&KEY={secret}"
+        )
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {"mealServiceDietInfo": [{"head": []}, {"row": []}]}
+
+    def fake_get(url: str, *, params: dict, timeout: int) -> FakeResponse:
+        return FakeResponse()
+
+    _, safe_response_url, _ = namespace["request_neis_meals"](
+        namespace["request_params"],
+        http_get=fake_get,
+    )
+
+    assert namespace["request_params"]["KEY"] == secret
+    assert secret not in namespace["prepared_request_url"]
+    assert secret not in safe_response_url
+    assert secret not in captured_output
+
+
 def test_widget_callback_shows_source_and_handles_bad_input(tmp_path: Path) -> None:
     chapter_path = next(
         path for path in build_textbook(tmp_path) if path.name.startswith("06")
@@ -341,15 +440,11 @@ def test_widget_callback_shows_source_and_handles_bad_input(tmp_path: Path) -> N
     assert "최대 5개" in namespace["callback_state"]["message"]
 
 
-def test_difficult_chapters_split_code_and_explain_line_groups() -> None:
+def test_cluster_and_widget_chapters_split_code_and_explain_line_groups() -> None:
     chapter_dir = PROJECT_ROOT / "jupyter_course" / "chapters"
-    tfidf_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[3]))
     cluster_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[4]))
     widget_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[6]))
 
-    assert "작은 TF-IDF를 직접 계산" in tfidf_source
-    assert "math.log" in tfidf_source
-    assert "tiny_counts[0][term] / sum(tiny_counts[0].values())" in tfidf_source
     assert "중심을 옮깁니다" in cluster_source
     assert "입력 위젯 만들기" in widget_source
     assert "버튼 콜백 연결과 화면 조립" in widget_source
