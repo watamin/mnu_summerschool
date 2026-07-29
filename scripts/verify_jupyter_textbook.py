@@ -42,11 +42,16 @@ REQUIRED_RESULT_KEYS = {
     "01": {"source", "raw_rows", "first_keys"},
     "02": {"clean_rows", "columns", "chart_ready"},
     "03": {
+        "cross_document_comparison",
+        "document_summaries",
+        "document_term_details",
         "similarities",
         "query",
         "document_count",
         "document_top_terms",
         "document_sources_verified",
+        "menu_similarity_ranking",
+        "toy_tfidf_table",
     },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
@@ -141,7 +146,15 @@ def _validate_chapter_result(
         "02": lambda item: item["clean_rows"] >= 1
         and bool(item["columns"])
         and item["chart_ready"] is True,
-        "03": lambda item: bool(item["similarities"]) and bool(item["query"]),
+        "03": lambda item: bool(item["similarities"])
+        and bool(item["query"])
+        and len(item["document_summaries"]) == 3
+        and set(item["document_term_details"])
+        == {"신경망 소개", "컴퓨터 비전 소개", "윤리적이고 책임 있는 AI"}
+        and all(len(rows) >= 5 for rows in item["document_term_details"].values())
+        and len(item["cross_document_comparison"]) == 12
+        and len(item["menu_similarity_ranking"]) >= 1
+        and len(item["toy_tfidf_table"]) == 6,
         "04": lambda item: bool(item["top_similar_menu"])
         and len(item["cluster_names"]) >= 2,
         "05": lambda item: item["recommendations"] >= 1

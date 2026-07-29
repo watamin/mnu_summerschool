@@ -86,10 +86,15 @@ EXPECTED_RESULT_KEYS = {
         "query",
         "two_grams",
         "common_idf",
+        "cross_document_comparison",
         "rare_idf",
         "document_count",
+        "document_summaries",
+        "document_term_details",
         "document_top_terms",
         "document_sources_verified",
+        "menu_similarity_ranking",
+        "toy_tfidf_table",
     },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
@@ -376,6 +381,69 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     assert results["07"]["model_card_complete"] is True
     assert results["08"]["presentation_sections"] == 8
     assert results["08"]["demo_checklist_ready"] is True
+
+
+def test_tfidf_chapter_traces_each_document_and_score_step_by_step(
+    tmp_path: Path,
+) -> None:
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("03")
+    )
+    source = _source(_read_notebook(chapter_path))
+
+    tutorial_signposts = (
+        "1단계. 비교할 문서 세 편 확인하기",
+        "2단계. 문서에서 분석할 한글 단어 고르기",
+        "3단계. 단어 하나의 계산 과정 따라가기",
+        "4단계. 문서별 상위 TF-IDF 결과 비교하기",
+        "5단계. 결과를 문서 내용과 연결해 해석하기",
+        "6단계. 같은 방법을 급식 메뉴에 적용하기",
+        "등장 횟수",
+        "전체 단어 수",
+        "TF-IDF 계산표",
+        "왜 이 단어의 점수가 높을까?",
+    )
+    assert all(signpost in source for signpost in tutorial_signposts)
+    assert "[가-힣]{2,}" in source
+    assert "[가-힣]{{2,}}" not in source
+
+    result = _execute_code_cells(chapter_path)["chapter_result"]
+    summaries = {
+        row["문서"]: row for row in result["document_summaries"]
+    }
+    assert summaries["신경망 소개"] == {
+        "문서": "신경망 소개",
+        "글자 수": 2827,
+        "분석 단어 수": 297,
+        "서로 다른 단어 수": 232,
+    }
+    assert summaries["컴퓨터 비전 소개"]["분석 단어 수"] == 570
+    assert summaries["윤리적이고 책임 있는 AI"]["분석 단어 수"] == 391
+
+    details = result["document_term_details"]
+    assert set(details) == {
+        "신경망 소개",
+        "컴퓨터 비전 소개",
+        "윤리적이고 책임 있는 AI",
+    }
+    expected_first_terms = {
+        "신경망 소개": ("뉴런", 6, 0.0342),
+        "컴퓨터 비전 소개": ("이미지", 18, 0.0407),
+        "윤리적이고 책임 있는 AI": ("책임", 6, 0.0260),
+    }
+    for title, (word, count, score) in expected_first_terms.items():
+        first = details[title][0]
+        assert first["단어"] == word
+        assert first["등장 횟수"] == count
+        assert first["전체 단어 수"] == summaries[title]["분석 단어 수"]
+        assert {"TF", "DF", "IDF", "TF-IDF", "계산"}.issubset(first)
+        assert first["TF-IDF"] == pytest.approx(score, abs=0.0001)
+
+    assert len(result["toy_tfidf_table"]) == 6
+    assert len(result["cross_document_comparison"]) == 12
+    assert len(result["menu_similarity_ranking"]) == 5
+    assert result["menu_similarity_ranking"][0]["날짜"] == "2026-06-24"
+    assert result["menu_similarity_ranking"][0]["유사도"] == 0.141
 
 
 def test_api_chapter_teaches_live_meals_fallback_and_date_mismatch() -> None:

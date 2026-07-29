@@ -77,6 +77,20 @@ def test_verifier_rejects_incomplete_or_meaningless_chapter_contracts() -> None:
     with pytest.raises(RuntimeError, match="필수 결과"):
         _validate_chapter_result("06", {"chapter": "06"}, Path("06.ipynb"))
 
+    with pytest.raises(RuntimeError, match="필수 결과"):
+        _validate_chapter_result(
+            "03",
+            {
+                "chapter": "03",
+                "similarities": [0.1],
+                "query": "파스타",
+                "document_count": 3,
+                "document_top_terms": {"신경망 소개": ["뉴런"]},
+                "document_sources_verified": True,
+            },
+            Path("03.ipynb"),
+        )
+
     with pytest.raises(RuntimeError, match="실제 콜백"):
         _validate_chapter_result(
             "06",

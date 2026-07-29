@@ -1077,7 +1077,20 @@ DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가
 
 문서 한 편만 읽으면 어떤 단어가 그 글만의 특징인지 판단하기 어렵습니다. 주제가 다른 여러 문서를 한데 모은 **말뭉치**에서 TF와 IDF를 함께 계산해야 합니다. 이 장에서는 공개 라이선스로 배포된 한국어 AI 입문 문서 세 편을 직접 파일로 읽습니다.
 
-한국어는 `이미지`, `이미지를`, `이미지는`처럼 조사가 붙습니다. 전문 형태소 분석기를 쓰면 이를 더 정교하게 나눌 수 있지만, 이번 활동에서는 원리를 눈으로 확인하는 것이 먼저입니다. `[가-힣]{{2,}}`라는 규칙으로 한글 두 글자 이상을 찾고, `있습니다`, `그리고`처럼 주제를 구별하기 어려운 자주 쓰는 말은 작은 불용어 목록에서 뺍니다. 따라서 결과는 완벽한 국어 분석이 아니라 **같은 단순 규칙으로 세 문서를 공정하게 비교한 결과**입니다.
+한국어는 `이미지`, `이미지를`, `이미지는`처럼 조사가 붙습니다. 전문 형태소 분석기를 쓰면 이를 더 정교하게 나눌 수 있지만, 이번 활동에서는 원리를 눈으로 확인하는 것이 먼저입니다. `[가-힣]{2,}`라는 규칙으로 한글 두 글자 이상을 찾고, `있습니다`, `그리고`처럼 주제를 구별하기 어려운 자주 쓰는 말은 작은 불용어 목록에서 뺍니다. 따라서 결과는 완벽한 국어 분석이 아니라 **같은 단순 규칙으로 세 문서를 공정하게 비교한 결과**입니다.
+
+### 이 장의 TF-IDF 튜토리얼 순서
+
+공식만 읽고 넘어가지 않습니다. 아래 여섯 단계를 차례로 실행하면서 **어느 문서에서 어떤 단어가 몇 점을 받았는지** 끝까지 추적합니다.
+
+1. **1단계. 비교할 문서 세 편 확인하기** — 제목, 글자 수, 출처를 확인합니다.
+2. **2단계. 문서에서 분석할 한글 단어 고르기** — 단어를 뽑고 흔한 표현을 제외합니다.
+3. **3단계. 단어 하나의 계산 과정 따라가기** — 등장 횟수, 전체 단어 수, TF, DF, IDF, TF-IDF를 차례로 계산합니다.
+4. **4단계. 문서별 상위 TF-IDF 결과 비교하기** — 세 문서의 상위 단어와 실제 점수를 한 표에서 봅니다.
+5. **5단계. 결과를 문서 내용과 연결해 해석하기** — 점수가 높은 까닭과 분석의 한계를 문장으로 설명합니다.
+6. **6단계. 같은 방법을 급식 메뉴에 적용하기** — 가상 취향과 다섯 메뉴의 순위, 유사도, 공통 글자 조각 수를 확인합니다.
+
+표의 소수는 읽기 쉽도록 반올림합니다. 계산에는 반올림하기 전 값을 사용하므로 손으로 계산한 값과 마지막 자리에서 조금 다를 수 있습니다.
 """,
         hand_example="""
 종이에 `파스타`를 쓰고 단어 앞뒤에 경계 표시 `·`를 붙여 `·파스타·`로 만드세요.
@@ -1087,14 +1100,18 @@ DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가
 | 2-gram | `·파`, `파스`, `스타`, `타·` |
 | 3-gram | `·파스`, `파스타`, `스타·` |
 
-이제 A=`파스타 피자`, B=`파스타`, C=`밥 국` 세 문서에서 두 조각을 비교합니다.
+이제 A=`파스타 피자`, B=`파스타`, C=`밥 국` 세 문서에서 `파스`와 `피자`를 비교합니다. 추천기에 쓰는 2~4글자 조각을 모두 세면 A는 15개, B는 9개, C는 6개입니다.
 
-| 조각 | A에 있음 | B에 있음 | C에 있음 | DF | IDF의 크기 |
-|---|---:|---:|---:|---:|---|
-| `파스` | O | O | X | 2 | 비교적 작음 |
-| `피자` | O | X | X | 1 | 비교적 큼 |
+| 문서 | 조각 | 등장 횟수 | 전체 조각 수 | TF | DF | IDF | TF-IDF |
+|---|---|---:|---:|---:|---:|---:|---:|
+| A | `파스` | 1 | 15 | 0.067 | 2 | 1.288 | 0.086 |
+| A | `피자` | 1 | 15 | 0.067 | 1 | 1.693 | 0.113 |
+| B | `파스` | 1 | 9 | 0.111 | 2 | 1.288 | 0.143 |
+| B | `피자` | 0 | 9 | 0.000 | 1 | 1.693 | 0.000 |
+| C | `파스` | 0 | 6 | 0.000 | 2 | 1.288 | 0.000 |
+| C | `피자` | 0 | 6 | 0.000 | 1 | 1.693 | 0.000 |
 
-`피자`는 한 문서에만 있으므로 A 문서를 구별하는 더 강한 단서가 됩니다. 여기서 O의 총개수를 세는 것이 DF입니다.
+`피자`는 한 문서에만 있어 IDF는 크지만 B와 C에는 실제로 등장하지 않아 TF-IDF가 0입니다. 반대로 B의 `파스`는 IDF가 조금 작아도 짧은 B 문서에서 차지하는 비율인 TF가 커서 0.143이 됩니다. TF-IDF는 **드문 단어이면 무조건 높은 값**이 아니라 TF와 IDF가 모두 있어야 만들어지는 점수입니다.
 """,
         prediction="- `파스타`의 경계를 포함한 2-gram은 네 개이다.\n- 세 문서 중 한 문서에만 있는 `피자`의 IDF가 두 문서에 있는 `파스`의 IDF보다 크다.\n- 신경망 문서에는 `뉴런`, 컴퓨터 비전 문서에는 `이미지`, 책임 있는 AI 문서에는 `책임`이 높은 특징어로 나타날 것이다.\n- ‘파스타, 피자’를 좋아하는 가상 취향은 파스타·피자 메뉴와 가장 높은 유사도를 보인다.",
         code_sections=[
@@ -1103,6 +1120,8 @@ DF가 작으면 나누는 수가 작아져 IDF가 커지고, DF가 크면 IDF가
                 SETUP_CODE
                 + """
 from neis_meal_ai.recommender import _char_ngrams, _tfidf_similarity
+from IPython.display import display
+import pandas as pd
 
 ngram_word = "파스타"
 padded_word = f" {ngram_word} "
@@ -1134,66 +1153,114 @@ print(list(grams.items())[:15])
 """,
             ),
             (
-                "TF와 DF를 따로 계산하기",
+                "작은 세 문서의 TF-IDF 계산표 만들기",
                 """
 import math
 
-tiny_documents = ["파스타 피자", "파스타", "밥 국"]
+tiny_document_rows = [
+    {"문서": "A", "내용": "파스타 피자"},
+    {"문서": "B", "내용": "파스타"},
+    {"문서": "C", "내용": "밥 국"},
+]
+tiny_documents = [row["내용"] for row in tiny_document_rows]
 tiny_counts = [_char_ngrams(text) for text in tiny_documents]
+terms_to_compare = ["파스", "피자"]
+
+print("[비교할 작은 문서]")
+display(pd.DataFrame(tiny_document_rows))
+
+toy_tfidf_table = []
+for row, counts in zip(tiny_document_rows, tiny_counts):
+    total_ngrams = sum(counts.values())
+    for compared_term in terms_to_compare:
+        count = counts[compared_term]
+        tf = count / total_ngrams
+        df = sum(compared_term in other for other in tiny_counts)
+        idf = math.log((len(tiny_documents) + 1) / (df + 1)) + 1
+        tfidf = tf * idf
+        toy_tfidf_table.append(
+            {
+                "문서": row["문서"],
+                "조각": compared_term,
+                "등장 횟수": count,
+                "전체 조각 수": total_ngrams,
+                "TF": round(tf, 3),
+                "DF": df,
+                "IDF": round(idf, 3),
+                "TF-IDF": round(tfidf, 3),
+                "계산": (
+                    f"{count} ÷ {total_ngrams} × {idf:.3f} "
+                    f"= {tfidf:.3f}"
+                ),
+            }
+        )
+
+print("[TF-IDF 계산표]")
+display(pd.DataFrame(toy_tfidf_table))
+""",
+                "A·B·C의 두 조각을 모두 계산해 여섯 줄의 표로 만들었습니다. 등장하지 않은 조각은 TF가 0이므로 IDF가 커도 TF-IDF는 0입니다. B의 `파스`는 짧은 문서 안에서 차지하는 비율이 커서 A의 `파스`보다 높은 값을 받습니다.",
+                """
+1. `tiny_document_rows`는 문서 이름과 내용을 함께 저장해 어느 결과가 어느 문서에서 나왔는지 잃지 않게 합니다.<br>
+2. `tiny_counts`는 각 문서의 2~4글자 조각과 등장 횟수를 셉니다.<br>
+3. 바깥쪽 `for`는 문서 A·B·C를, 안쪽 `for`는 `파스`·`피자`를 차례로 살핍니다.<br>
+4. `count / total_ngrams`가 TF이고, `sum(compared_term in other ...)`가 DF입니다.<br>
+5. `tf * idf`로 최종 TF-IDF를 구한 뒤 계산식까지 `계산` 열에 남깁니다.<br>
+6. `pd.DataFrame(...)`은 여섯 줄의 계산 결과를 읽기 쉬운 표로 보여 줍니다.
+""",
+            ),
+            (
+                "A 문서의 ‘피자’ 점수를 한 줄씩 따라가기",
+                """
 term = "피자"
 term_count_in_a = tiny_counts[0][term]
 all_ngram_count_in_a = sum(tiny_counts[0].values())
 term_tf_in_a = term_count_in_a / all_ngram_count_in_a
 term_df = sum(term in counts for counts in tiny_counts)
-
-print("A 문서의 '피자' 횟수:", term_count_in_a)
-print("A 문서의 전체 n-gram 수:", all_ngram_count_in_a)
-print("TF = 횟수 ÷ 전체 조각 수:", round(term_tf_in_a, 3))
-print("'피자'가 들어 있는 문서 수 DF:", term_df)
-""",
-                "`피자`는 A 문서 안에서 한 번 나타났습니다. TF의 분모는 A 문서에서 만들어진 모든 2~4글자 조각의 수입니다. DF는 세 문서 가운데 `피자`를 하나라도 포함한 문서만 세므로 1입니다.",
-                """
-1. `tiny_documents`는 손으로 확인할 세 문장을 저장합니다.<br>
-2. `tiny_counts[0][term]`은 A 문서 안의 `피자` 횟수를 읽습니다.<br>
-3. `sum(tiny_counts[0].values())`는 A 문서의 모든 n-gram 횟수를 더합니다.<br>
-4. 두 값을 나눈 것이 A 문서에서 `피자`가 차지하는 비율인 TF입니다.<br>
-5. `sum(term in counts for counts in tiny_counts)`는 각 문서에 조각이 있는지만 확인해 DF를 셉니다.
-""",
-            ),
-            (
-                "흔한 조각과 드문 조각의 IDF 비교하기",
-                """
-terms_to_compare = ["파스", "피자"]
-idf_by_term = {}
-
-for compared_term in terms_to_compare:
-    compared_df = sum(compared_term in counts for counts in tiny_counts)
-    compared_idf = math.log(
-        (len(tiny_documents) + 1) / (compared_df + 1)
-    ) + 1
-    idf_by_term[compared_term] = compared_idf
-    print(
-        compared_term,
-        "→ DF:", compared_df,
-        "IDF:", round(compared_idf, 3),
-    )
-
-common_idf = idf_by_term["파스"]
-rare_idf = idf_by_term["피자"]
+rare_idf = math.log(
+    (len(tiny_documents) + 1) / (term_df + 1)
+) + 1
 rare_tfidf_in_a = term_tf_in_a * rare_idf
-print("A 문서에서 '피자'의 TF-IDF:", round(rare_tfidf_in_a, 3))
+
+common_df = sum("파스" in counts for counts in tiny_counts)
+common_idf = math.log(
+    (len(tiny_documents) + 1) / (common_df + 1)
+) + 1
+
+print("1. A 문서의 '피자' 등장 횟수:", term_count_in_a)
+print("2. A 문서의 전체 2~4글자 조각 수:", all_ngram_count_in_a)
+print(
+    "3. TF =",
+    f"{term_count_in_a} ÷ {all_ngram_count_in_a}",
+    "=",
+    round(term_tf_in_a, 4),
+)
+print("4. DF = '피자'를 포함한 문서 수 =", term_df)
+print(
+    "5. IDF =",
+    f"log((3+1)/({term_df}+1))+1",
+    "=",
+    round(rare_idf, 4),
+)
+print(
+    "6. TF-IDF =",
+    f"{term_tf_in_a:.4f} × {rare_idf:.4f}",
+    "=",
+    round(rare_tfidf_in_a, 4),
+)
+print("\\n비교: '파스'의 DF =", common_df, "· IDF =", round(common_idf, 4))
 """,
-                "세 문서 중 두 문서에 있는 `파스`보다 한 문서에만 있는 `피자`의 IDF가 큽니다. A 문서에서 구한 `피자`의 TF에 이 IDF를 곱하면 `피자`의 TF-IDF가 됩니다.",
+                "A 문서의 `피자`는 1회, 전체 조각은 15개이므로 TF는 0.0667입니다. 세 문서 가운데 A에만 있으므로 DF는 1, IDF는 1.6931입니다. 두 값을 곱한 TF-IDF는 0.1129입니다. `파스`는 A와 B 두 문서에 있어 IDF가 1.2877로 더 작습니다.",
                 """
-1. `terms_to_compare`에는 흔한 조각과 드문 조각을 하나씩 넣었습니다.<br>
-2. 각 조각의 DF를 센 뒤 `log((문서 수+1)/(DF+1))+1` 식에 넣습니다.<br>
-3. DF가 작을수록 분수와 IDF가 커지는지 두 출력값을 비교합니다.<br>
-4. `idf_by_term` 사전은 조각별 IDF를 저장합니다.<br>
-5. 마지막 줄에서 A 문서의 TF와 `피자`의 IDF를 곱해 TF-IDF를 완성합니다.
+1. `term_count_in_a`는 TF의 분자, `all_ngram_count_in_a`는 분모입니다.<br>
+2. TF 계산을 `1 ÷ 15`처럼 실제 숫자로 출력해 공식과 결과를 연결합니다.<br>
+3. `term_df`는 `피자`가 있는 문서만 세므로 1입니다.<br>
+4. 세 문서라는 뜻의 3과 DF 1을 IDF 식에 넣어 1.6931을 얻습니다.<br>
+5. `term_tf_in_a * rare_idf`는 0.0667과 1.6931을 곱해 0.1129를 만듭니다.<br>
+6. 마지막 줄은 두 문서에 나타난 `파스`의 IDF가 더 작은지 비교합니다.
 """,
             ),
             (
-                "내려받은 한국어 문서 세 편에서 특징어 찾기",
+                "한국어 문서 세 편의 TF-IDF를 문서별로 계산하기",
                 """
 from collections import Counter
 from hashlib import sha256
@@ -1218,7 +1285,12 @@ for source in manifest["documents"]:
         raise ValueError(f"원문 확인 실패: {source['file']}")
     document_text = document_bytes.decode("utf-8")
     documents.append((source["title"], document_text))
-    print(source["title"], "→", len(document_text), "글자 · 원문 확인", is_verified)
+    print(
+        source["title"],
+        "→ 파일:", source["file"],
+        "· 글자:", len(document_text),
+        "· 원문 확인:", is_verified,
+    )
 
 stop_words = {
     "그리고", "그러나", "하지만", "또한", "대한", "대해", "위해",
@@ -1239,45 +1311,159 @@ word_df = {
     for word in all_words
 }
 
+document_summaries = []
+for (title, text), counts in zip(documents, document_counts):
+    document_summaries.append(
+        {
+            "문서": title,
+            "글자 수": len(text),
+            "분석 단어 수": sum(counts.values()),
+            "서로 다른 단어 수": len(counts),
+        }
+    )
+
+print("\\n[문서별 기본 정보]")
+display(pd.DataFrame(document_summaries))
+
 document_top_terms = {}
+document_term_details = {}
+all_document_term_rows = []
 for (title, _), counts in zip(documents, document_counts):
     total_words = sum(counts.values())
-    tfidf_by_word = {}
+    calculated_rows = []
     for word, count in counts.items():
         tf = count / total_words
         idf = math.log((document_count + 1) / (word_df[word] + 1)) + 1
-        tfidf_by_word[word] = tf * idf
-    ranked_terms = sorted(
-        tfidf_by_word.items(), key=lambda item: (-item[1], item[0])
+        calculated_rows.append(
+            {
+                "단어": word,
+                "등장 횟수": count,
+                "전체 단어 수": total_words,
+                "TF": tf,
+                "DF": word_df[word],
+                "IDF": idf,
+                "TF-IDF": tf * idf,
+            }
+        )
+
+    ranked_rows = sorted(
+        calculated_rows,
+        key=lambda row: (-row["TF-IDF"], row["단어"]),
     )[:8]
-    document_top_terms[title] = [word for word, _ in ranked_terms]
-    print(f"\\n[{title}] 특징어")
-    for rank, (word, score) in enumerate(ranked_terms, 1):
-        print(rank, word, round(score, 4))
+    detail_rows = []
+    for rank, row in enumerate(ranked_rows, 1):
+        detail = {
+            "순위": rank,
+            "단어": row["단어"],
+            "등장 횟수": row["등장 횟수"],
+            "전체 단어 수": row["전체 단어 수"],
+            "TF": round(row["TF"], 4),
+            "DF": row["DF"],
+            "IDF": round(row["IDF"], 4),
+            "TF-IDF": round(row["TF-IDF"], 4),
+            "계산": (
+                f"{row['등장 횟수']} ÷ {row['전체 단어 수']} "
+                f"× {row['IDF']:.4f} = {row['TF-IDF']:.4f}"
+            ),
+        }
+        detail_rows.append(detail)
+        all_document_term_rows.append({"문서": title, **detail})
+
+    document_term_details[title] = detail_rows
+    document_top_terms[title] = [row["단어"] for row in detail_rows]
+    print(f"\\n[{title}] 상위 TF-IDF 계산표")
+    display(pd.DataFrame(detail_rows))
+
+comparison_words = ["뉴런", "이미지", "책임", "모델"]
+cross_document_comparison = []
+for compared_word in comparison_words:
+    compared_df = word_df.get(compared_word, 0)
+    compared_idf = math.log(
+        (document_count + 1) / (compared_df + 1)
+    ) + 1
+    for (title, _), counts in zip(documents, document_counts):
+        total_words = sum(counts.values())
+        count = counts[compared_word]
+        tf = count / total_words
+        cross_document_comparison.append(
+            {
+                "단어": compared_word,
+                "문서": title,
+                "등장 횟수": count,
+                "TF": round(tf, 4),
+                "DF": compared_df,
+                "IDF": round(compared_idf, 4),
+                "TF-IDF": round(tf * compared_idf, 4),
+            }
+        )
+
+print("\\n[같은 단어를 세 문서에서 비교]")
+display(pd.DataFrame(cross_document_comparison))
 
 document_sources_verified = all(verification_results)
 """,
-                "세 문서 모두 고정된 원문의 SHA-256과 일치했습니다. 세 글에서 흔한 말보다 한 문서 안에서 자주 나오고 다른 문서에서는 드문 말이 위쪽에 나타납니다. 조사까지 완전히 떼지 않은 간단한 방식이므로 비슷한 낱말이 따로 보일 수 있습니다.",
+                """
+#### 왜 이 단어의 점수가 높을까?
+
+세 문서의 실제 1위는 다음과 같습니다.
+
+| 문서 | 1위 단어 | 등장 횟수 | TF | DF | IDF | TF-IDF |
+|---|---|---:|---:|---:|---:|---:|
+| 신경망 소개 | 뉴런 | 6 | 0.0202 | 1 | 1.6931 | 0.0342 |
+| 컴퓨터 비전 소개 | 이미지 | 18 | 0.0316 | 2 | 1.2877 | 0.0407 |
+| 윤리적이고 책임 있는 AI | 책임 | 6 | 0.0153 | 1 | 1.6931 | 0.0260 |
+
+`이미지`는 두 문서에 있어 IDF가 `뉴런`이나 `책임`보다 작습니다. 그래도 컴퓨터 비전 문서에서 18번 나타나 TF가 크기 때문에 세 1위 가운데 가장 높은 0.0407이 됩니다. 이처럼 최종 순위는 IDF 하나가 아니라 TF와 IDF의 곱으로 정해집니다.
+""",
                 """
 1. `sources.json`에서 파일명·제목·원문 SHA-256을 읽습니다.<br>
 2. `sha256(document_bytes).hexdigest()`로 현재 파일의 지문을 만들고 기록된 값과 비교합니다.<br>
 3. `re.findall(r"[가-힣]{2,}", text)`는 한글 두 글자 이상인 덩어리만 찾습니다.<br>
 4. `Counter`는 문서 안에서 각 단어가 몇 번 나왔는지 세어 TF의 재료를 만듭니다.<br>
-5. `word_df`는 각 단어를 포함한 문서 수를 세고, 앞에서 배운 식으로 IDF를 구합니다.<br>
-6. 문서마다 `TF × IDF`가 큰 여덟 단어를 정렬해 특징어로 보여 줍니다.<br>
-7. 이 결과는 세 문서 안에서의 상대적인 특징이며, 단어의 절대적인 중요도를 판정한 것이 아닙니다.
+5. `document_summaries`는 문서별 글자 수, 분석 단어 수, 서로 다른 단어 수를 먼저 보여 줍니다.<br>
+6. `calculated_rows`에는 단어마다 등장 횟수부터 TF-IDF까지 계산한 값을 모두 저장합니다.<br>
+7. `ranked_rows`는 TF-IDF가 큰 순서로 정렬하고 앞의 여덟 단어를 선택합니다.<br>
+8. `계산` 열은 `6 ÷ 297 × 1.6931 = 0.0342`처럼 실제 숫자가 공식에 들어가는 과정을 남깁니다.<br>
+9. `cross_document_comparison`은 같은 단어가 세 문서에서 몇 번 나타나고 얼마의 점수를 받는지 나란히 보여 줍니다.<br>
+10. 이 결과는 이 세 문서 안에서의 상대적인 특징이며, 단어의 절대적인 중요도를 판정한 것이 아닙니다.
 """,
             ),
             (
-                "가상 취향과 다섯 메뉴 비교",
+                "가상 취향과 다섯 메뉴를 점수 순서로 비교하기",
                 """
 query = "파스타 피자 면"
 menu_texts = meal_df["menu_text"].tolist()
 similarity_array = _tfidf_similarity(menu_texts, query)
 similarities = [round(float(value), 3) for value in similarity_array]
 
+query_terms = query.split()
+query_ngram_set = set(_char_ngrams(query))
+menu_similarity_ranking = []
 for date, score, menu in zip(meal_df["date"], similarities, menu_texts):
-    print(date, score, menu[:45])
+    menu = str(menu)
+    direct_hits = [term for term in query_terms if term in menu]
+    common_ngrams = query_ngram_set.intersection(_char_ngrams(menu))
+    menu_similarity_ranking.append(
+        {
+            "날짜": str(date),
+            "유사도": score,
+            "직접 포함 단어": ", ".join(direct_hits) if direct_hits else "없음",
+            "공통 글자 조각 수": len(common_ngrams),
+            "메뉴": menu,
+        }
+    )
+
+menu_similarity_ranking.sort(
+    key=lambda row: (-row["유사도"], row["날짜"])
+)
+for rank, row in enumerate(menu_similarity_ranking, 1):
+    row["순위"] = rank
+
+ranking_columns = [
+    "순위", "날짜", "유사도", "직접 포함 단어", "공통 글자 조각 수", "메뉴"
+]
+print("[가상 취향과 메뉴의 TF-IDF 유사도 순위]")
+display(pd.DataFrame(menu_similarity_ranking)[ranking_columns])
 
 chapter_result = {
     "chapter": "03",
@@ -1287,16 +1473,28 @@ chapter_result = {
     "common_idf": common_idf,
     "rare_idf": rare_idf,
     "document_count": document_count,
+    "document_summaries": document_summaries,
+    "document_term_details": document_term_details,
     "document_top_terms": document_top_terms,
     "document_sources_verified": document_sources_verified,
+    "cross_document_comparison": cross_document_comparison,
+    "menu_similarity_ranking": menu_similarity_ranking,
+    "toy_tfidf_table": toy_tfidf_table,
 }
 """,
-                "유사도는 0에 가까울수록 공통 글자 특징이 적고, 1에 가까울수록 방향이 비슷합니다. 점수는 만족도나 건강 점수가 아닙니다.",
+                """
+2026-06-24 식단은 `미트볼로제파스타`와 `피자`를 직접 포함하고 공통 글자 조각도 많아 0.141로 1위입니다. 0.018처럼 작은 양수는 완전한 단어가 같지 않더라도 짧은 문자 조각 일부가 겹칠 때 나올 수 있습니다. 0.000은 이번 가상 취향과 비교할 공통 특징이 거의 없다는 뜻입니다.
+
+유사도는 **텍스트 표현의 가까움**입니다. 0.141이 0.018보다 가상 취향과 더 비슷하다는 뜻이지, 14.1점짜리 음식이거나 더 건강하다는 뜻은 아닙니다.
+""",
                 """
 1. `query`는 실제 학생 정보가 아닌 가상 취향 문장입니다.<br>
 2. `tolist()`는 표의 메뉴 열을 문장 목록으로 바꿉니다.<br>
-3. `_tfidf_similarity`는 취향과 각 메뉴의 방향 가까움을 한 번에 계산합니다.<br>
-4. `zip(...)`은 같은 위치의 날짜·점수·메뉴를 한 줄씩 묶어 출력합니다.
+3. `_tfidf_similarity`는 취향과 각 메뉴의 TF-IDF 벡터 방향 가까움을 한 번에 계산합니다.<br>
+4. `direct_hits`는 `파스타`, `피자`, `면`이 메뉴명에 그대로 들어 있는지 확인합니다.<br>
+5. `common_ngrams`는 완전한 단어가 같지 않아도 함께 나타난 2~4글자 조각을 셉니다.<br>
+6. `sort(...)`는 유사도가 큰 메뉴부터 정렬하고, `순위` 열에는 1부터 번호를 붙입니다.<br>
+7. 마지막 표에서 어느 날짜가 얼마의 점수를 받았고 어떤 메뉴였는지 한 줄씩 확인합니다.
 """,
             ),
         ],
