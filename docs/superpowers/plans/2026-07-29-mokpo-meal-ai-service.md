@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 목포시 중·고교 실제 NEIS 급식으로 개인 추천, 학교 비교, Food MBTI·밥친구, 식단 시뮬레이션을 제공하는 설명 가능한 Gradio 웹 서비스를 만든다.
+**Goal:** 목포시 중·고교 실제 NEIS 급식으로 학생 설문·실제 만족도 피드백, 모둠 분석, 학교 비교, 식단 시뮬레이션을 제공하는 완성형 Gradio 웹 서비스를 만든다.
 
 **Architecture:** 교사용 수집기가 인증키를 일시적으로 사용해 공개 JSON 스냅샷을 만들고, 런타임 웹 앱은 네트워크나 인증키 없이 이 스냅샷만 읽는다. 분석 계층은 TF-IDF와 선택적 Sentence Transformer 임베딩을 같은 인터페이스로 제공하며, Gradio 콜백은 Pandas 표와 설명 문구만 반환한다.
 
@@ -16,6 +16,8 @@
 - 현재 공개 스냅샷 범위는 목포시 중·고교 31개, 2026-06-01~2026-07-29 중식이다.
 - 임베딩 모델은 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`이며 사용할 수 없으면 TF-IDF로 자동 전환한다.
 - 만족도·Food MBTI·가성비·잔반·조합 점수는 실제 조사값이 아니라 수업용 예측 또는 대체지표라고 표시한다.
+- 학생은 코드를 작성하지 않고 최대 6명의 익명 설문 수집과 피드백 분석에 집중한다.
+- 응답은 브라우저 세션에만 두고 사용자가 요청할 때 익명 CSV로 내려받는다.
 - 기존 남악고 웹 앱과 Jupyter 교과서 테스트를 깨뜨리지 않는다.
 
 ---
@@ -107,7 +109,7 @@ Run: `python -m pytest tests/test_text_vectors.py tests/test_recommender.py -q`
 
 **Interfaces:**
 - Consumes: cleaned meal frame and `cosine_scores`
-- Produces: `predict_satisfaction`, `best_worst_menus`, `school_statistics`, `signature_terms`, `recommend_high_schools`, `food_mbti`, `meal_buddies`, `pareto_candidates`, `menu_pair_scores`
+- Produces: `predict_satisfaction`, `best_worst_menus`, `school_statistics`, `signature_terms`, `recommend_high_schools`, `food_mbti`, `meal_buddies`, `analyze_feedback`, `cluster_feedback`, `pareto_candidates`, `menu_pair_scores`
 
 - [ ] **Step 1: Write failing satisfaction tests**
 
@@ -145,6 +147,14 @@ Use predicted group satisfaction, dish-count value proxy, calorie deviation, and
 
 Run: `python -m pytest tests/test_mokpo_analytics.py -q`
 
+- [ ] **Step 10: Add failing anonymous feedback tests**
+
+Assert participant-code uniqueness, grade and 1~5 rating validation, maximum six rows, exact CSV round trip, predicted-vs-actual error, small-sample warning, and deterministic two-cluster labels.
+
+- [ ] **Step 11: Implement feedback validation, CSV round trip, analysis, and clustering**
+
+Use the fixed schema from the design. Convert actual rating to a 20~100 scale only for error comparison and preserve the original 1~5 rating in output.
+
 ### Task 4: Service callbacks and four-tab Gradio app
 
 **Files:**
@@ -154,11 +164,11 @@ Run: `python -m pytest tests/test_mokpo_analytics.py -q`
 
 **Interfaces:**
 - Consumes: `MokpoDataset` and Task 3 analysis functions
-- Produces: `create_mokpo_app(dataset, embedder=None) -> gr.Blocks`, pure callback helpers for every button
+- Produces: `create_mokpo_app(dataset, embedder=None) -> gr.Blocks`, `gr.State` survey callbacks, CSV export/import, pure analysis callback helpers
 
 - [ ] **Step 1: Write failing callback tests**
 
-Call callbacks directly and assert Korean explanations, Best/Worst tables, school ranking, Food MBTI, buddy matrix, Pareto candidates, and safe error responses.
+Call callbacks directly and assert Korean explanations, Best/Worst tables, survey add/duplicate rejection, CSV export/import, predicted-vs-actual summary, school ranking, Food MBTI, buddy matrix, Pareto candidates, and safe error responses.
 
 - [ ] **Step 2: Implement pure callback helpers**
 
@@ -166,11 +176,11 @@ Callbacks accept primitives and return Markdown strings, DataFrames, or Matplotl
 
 - [ ] **Step 3: Write failing Gradio configuration test**
 
-Assert the four tab labels, 31-school source label, privacy warning, model limitation, proxy warning, and local-only launch options appear in the config.
+Assert the four tab labels `학생 설문·개인 결과`, `모둠 피드백 분석`, `학교 급식 지도`, `AI 식단 실험실`, 31-school source label, privacy warning, six-person small-sample warning, model limitation, proxy warning, and local-only launch options appear in the config.
 
 - [ ] **Step 4: Implement the Gradio layout**
 
-Build tabs `나의 급식 추천`, `학교 급식 지도`, `Food MBTI·밥친구`, `AI 식단 실험실`. Keep results empty until a button is pressed so full menu data is not embedded in initial HTML.
+Build the four feedback-centered tabs from the design. Keep results empty until a button is pressed so full menu data and survey rows are not embedded in initial HTML.
 
 - [ ] **Step 5: Implement `mokpo_service.py` entry point**
 
@@ -208,7 +218,7 @@ Encode three Korean menu sentences, assert shape `(3, 384)`, finite values, norm
 
 - [ ] **Step 4: Write textbook-style instructions**
 
-Explain the data flow, vector dimensions, cosine similarity, prediction formula, tabs, limitations, one-command service run, optional GPU installation, and TF-IDF fallback in Korean.
+Explain the survey workflow, CSV schema, actual-vs-predicted comparison, vector dimensions, cosine similarity, prediction formula, tabs, limitations, one-command service run, optional GPU installation, and TF-IDF fallback in Korean.
 
 - [ ] **Step 5: Verify repository hygiene**
 
