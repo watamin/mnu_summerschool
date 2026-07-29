@@ -15,6 +15,9 @@ from neis_meal_ai.mokpo_analytics import (
     pareto_candidates,
     predict_satisfaction,
     recommend_high_schools,
+    school_food_frequencies,
+    school_food_value_explanation,
+    school_food_values,
     school_statistics,
     signature_terms,
     user_based_prediction,
@@ -177,6 +180,44 @@ def test_school_statistics_and_signature_terms_are_school_specific() -> None:
     assert garam["급식 일수"] == 2
     assert garam["메뉴 항목 수"] == 5
     assert "치즈파스타" in set(signatures["시그니처 메뉴"])
+
+
+def test_school_food_values_show_each_tfidf_factor() -> None:
+    values = school_food_values(_meal_frame(), "목포가람고등학교")
+
+    row = values.loc[values["음식"] == "투움바스파게티"].iloc[0]
+    assert row["등장 횟수"] == 1
+    assert row["학교 전체 음식 수"] == 5
+    assert row["TF"] == pytest.approx(0.2, abs=1e-4)
+    assert row["등장 학교 수"] == 1
+    assert row["전체 학교 수"] == 3
+    assert row["IDF"] == pytest.approx(1.6931, abs=1e-4)
+    assert row["데이터 가치 점수"] == pytest.approx(0.3386, abs=1e-4)
+
+
+def test_school_food_value_explanation_substitutes_real_numbers() -> None:
+    values = school_food_values(_meal_frame(), "목포가람고등학교")
+
+    message = school_food_value_explanation(values)
+
+    assert "÷ 5" in message
+    assert "ln((1 + 3)" in message
+    assert "TF-IDF 데이터 가치 점수" in message
+
+
+def test_school_food_frequencies_rank_count_then_food_name() -> None:
+    frame = _meal_frame().copy()
+    frame.at[1, "dishes"] = ["배추김치", "배추김치", "매운 닭갈비덮밥"]
+
+    frequencies = school_food_frequencies(
+        frame, "목포가람고등학교", top_n=3
+    )
+
+    assert frequencies.iloc[0].to_dict() == {
+        "순위": 1,
+        "음식": "배추김치",
+        "등장 횟수": 2,
+    }
 
 
 def test_food_mbti_uses_all_four_question_axes() -> None:

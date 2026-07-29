@@ -188,6 +188,138 @@ def signature_terms(
     ).head(top_n).reset_index(drop=True)
 
 
+def _school_food_counters(
+    frame: pd.DataFrame,
+) -> tuple[dict[str, Counter[str]], dict[str, str]]:
+    """학교별 음식 횟수와 학교급을 검증해 한 번에 만든다."""
+
+    required = {"school_name", "school_kind", "dishes"}
+    if frame.empty or not required.issubset(frame.columns):
+        raise ValueError("학교별로 분석할 급식 데이터가 없습니다.")
+    counters: dict[str, Counter[str]] = {}
+    school_kinds: dict[str, str] = {}
+    for school_name, group in frame.groupby("school_name", sort=True):
+        name = str(school_name)
+        counter = Counter(
+            str(dish).strip()
+            for dishes in group["dishes"]
+            for dish in dishes
+            if str(dish).strip()
+        )
+        if counter:
+            counters[name] = counter
+            school_kinds[name] = str(group["school_kind"].iloc[0])
+    if not counters:
+        raise ValueError("학교별로 분석할 음식 항목이 없습니다.")
+    return counters, school_kinds
+
+
+def school_food_values(
+    frame: pd.DataFrame,
+    school_name: str | None = None,
+    *,
+    top_n: int | None = None,
+) -> pd.DataFrame:
+    """학교를 문서로 보고 음식별 TF·IDF·데이터 가치 점수를 모두 보인다."""
+
+    if top_n is not None and int(top_n) < 1:
+        raise ValueError("표시할 음식 수는 1개 이상이어야 합니다.")
+    counters, school_kinds = _school_food_counters(frame)
+    if school_name is not None and str(school_name) not in counters:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    selected = [str(school_name)] if school_name is not None else sorted(counters)
+    school_count = len(counters)
+    document_frequency: Counter[str] = Counter()
+    for counter in counters.values():
+        document_frequency.update(counter.keys())
+
+    records: list[dict[str, object]] = []
+    for name in selected:
+        counter = counters[name]
+        total_items = sum(counter.values())
+        for food, count in counter.items():
+            tf = count / total_items
+            food_school_count = document_frequency[food]
+            idf = math.log(
+                (1 + school_count) / (1 + food_school_count)
+            ) + 1.0
+            records.append(
+                {
+                    "학교": name,
+                    "학교급": school_kinds[name],
+                    "음식": food,
+                    "등장 횟수": int(count),
+                    "학교 전체 음식 수": int(total_items),
+                    "TF": tf,
+                    "등장 학교 수": int(food_school_count),
+                    "전체 학교 수": int(school_count),
+                    "IDF": idf,
+                    "데이터 가치 점수": tf * idf,
+                }
+            )
+    result = pd.DataFrame.from_records(records).sort_values(
+        ["학교", "데이터 가치 점수", "등장 횟수", "음식"],
+        ascending=[True, False, False, True],
+    )
+    result.insert(2, "순위", result.groupby("학교").cumcount() + 1)
+    if top_n is not None:
+        result = result.loc[result["순위"] <= int(top_n)]
+    for column in ("TF", "IDF", "데이터 가치 점수"):
+        result[column] = result[column].round(4)
+    return result.reset_index(drop=True)
+
+
+def school_food_value_explanation(values: pd.DataFrame) -> str:
+    """TF-IDF 1위 음식에 실제 수를 대입한 Markdown 계산식을 만든다."""
+
+    required = {
+        "학교",
+        "음식",
+        "등장 횟수",
+        "학교 전체 음식 수",
+        "등장 학교 수",
+        "전체 학교 수",
+    }
+    if values.empty or not required.issubset(values.columns):
+        raise ValueError("설명할 TF-IDF 음식 가치 결과가 없습니다.")
+    row = values.sort_values(["학교", "순위"]).iloc[0]
+    count = int(row["등장 횟수"])
+    total = int(row["학교 전체 음식 수"])
+    food_school_count = int(row["등장 학교 수"])
+    school_count = int(row["전체 학교 수"])
+    tf = count / total
+    idf = math.log((1 + school_count) / (1 + food_school_count)) + 1.0
+    value = tf * idf
+    return (
+        f"### {row['학교']}의 TF-IDF 1위: {row['음식']}\n"
+        f"- TF = {count} ÷ {total} = **{tf:.4f}**\n"
+        f"- IDF = ln((1 + {school_count}) ÷ (1 + {food_school_count})) + 1 "
+        f"= **{idf:.4f}**\n"
+        f"- TF-IDF 데이터 가치 점수 = {tf:.4f} × {idf:.4f} "
+        f"= **{value:.4f}**"
+    )
+
+
+def school_food_frequencies(
+    frame: pd.DataFrame, school_name: str, *, top_n: int = 15
+) -> pd.DataFrame:
+    """선택 학교에서 실제로 자주 나온 음식을 횟수 순서로 보여 준다."""
+
+    if int(top_n) < 1:
+        raise ValueError("표시할 음식 수는 1개 이상이어야 합니다.")
+    counters, _ = _school_food_counters(frame)
+    name = str(school_name)
+    if name not in counters:
+        raise ValueError("선택한 학교의 급식 데이터가 없습니다.")
+    rows = sorted(counters[name].items(), key=lambda item: (-item[1], item[0]))
+    return pd.DataFrame(
+        [
+            {"순위": rank, "음식": food, "등장 횟수": int(count)}
+            for rank, (food, count) in enumerate(rows[: int(top_n)], 1)
+        ]
+    )
+
+
 def food_mbti(
     *,
     rice_vs_noodle: int,
