@@ -8,3 +8,5 @@ notebooks/.executed/
 jupyter_course/.ipynb_checkpoints/
 jupyter_course/chapters/.ipynb_checkpoints/
 verification/
+neis.txt
+.env
