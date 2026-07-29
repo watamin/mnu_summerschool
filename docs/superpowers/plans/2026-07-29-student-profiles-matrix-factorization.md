@@ -86,7 +86,7 @@
 
 **Interfaces:**
 - Produces: `load_shared_password(path) -> str`, `build_authenticator(password) -> Callable[[str, str], bool]`, `parse_args(argv)`, and `launch_options(lan, password) -> dict`.
-- Launches: local mode on `127.0.0.1` without authentication; `--lan` mode on `0.0.0.0` with authentication, `share=False`, and a Korean login message.
+- Launches: local teacher mode on `127.0.0.1` without a student profile loader; `--lan` student mode on `0.0.0.0` with authentication, anonymized class outputs, no named export endpoint, `share=False`, and a Korean login message.
 
 - [ ] Write failing tests for missing/blank password files, constant-time password comparison behavior, invalid usernames, local defaults, LAN options, and injected profile store.
 - [ ] Run `pytest tests/test_mokpo_service.py tests/test_mokpo_ui.py -q` and confirm failures.
