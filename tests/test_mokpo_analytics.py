@@ -13,6 +13,8 @@ from neis_meal_ai.mokpo_analytics import (
     feedback_to_csv,
     food_mbti,
     food_map_coordinates,
+    global_food_value_explanation,
+    global_food_values,
     inverse_matrix_recommendations,
     meal_buddies,
     pareto_candidates,
@@ -224,6 +226,73 @@ def test_school_food_values_show_each_tfidf_factor() -> None:
     assert row["전체 학교 수"] == 3
     assert row["IDF"] == pytest.approx(1.6931, abs=1e-4)
     assert row["데이터 가치 점수"] == pytest.approx(0.3386, abs=1e-4)
+
+
+def test_global_food_values_merge_schools_and_rank_each_food_once() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                "school_name": "가학교",
+                "school_kind": "고등학교",
+                "dishes": ["배추김치", "배추김치", "배추김치", "돈까스"],
+            },
+            {
+                "school_name": "나학교",
+                "school_kind": "중학교",
+                "dishes": ["배추김치", "잡곡밥"],
+            },
+            {
+                "school_name": "다학교",
+                "school_kind": "고등학교",
+                "dishes": ["돈까스", "돈까스", "샐러드"],
+            },
+        ]
+    )
+
+    result = global_food_values(frame)
+
+    assert result["음식"].is_unique
+    assert result.iloc[0]["음식"] == "배추김치"
+    kimchi = result.loc[result["음식"] == "배추김치"].iloc[0]
+    assert kimchi["전체 순위"] == 1
+    assert kimchi["전체 등장 횟수"] == 4
+    assert kimchi["전체 음식 수"] == 9
+    assert kimchi["전체 TF"] == pytest.approx(4 / 9, abs=1e-4)
+    assert kimchi["등장 학교 수"] == 2
+    assert kimchi["전체 학교 수"] == 3
+    assert kimchi["IDF"] == pytest.approx(1.2877, abs=1e-4)
+    assert kimchi["전체 데이터 가치 점수"] == pytest.approx(0.5723, abs=1e-4)
+    assert kimchi["가장 많이 나온 학교"] == "가학교"
+    assert kimchi["해당 학교 횟수"] == 3
+
+
+def test_global_food_value_explanation_uses_the_global_winner_numbers() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                "school_name": "가학교",
+                "school_kind": "고등학교",
+                "dishes": ["배추김치", "배추김치", "배추김치", "돈까스"],
+            },
+            {
+                "school_name": "나학교",
+                "school_kind": "중학교",
+                "dishes": ["배추김치", "잡곡밥"],
+            },
+            {
+                "school_name": "다학교",
+                "school_kind": "고등학교",
+                "dishes": ["돈까스", "돈까스", "샐러드"],
+            },
+        ]
+    )
+
+    message = global_food_value_explanation(global_food_values(frame))
+
+    assert "전체 음식 중요도 1위: 배추김치" in message
+    assert "4 ÷ 9" in message
+    assert "ln((1 + 3) ÷ (1 + 2))" in message
+    assert "가학교에서 3회" in message
 
 
 def test_school_food_value_explanation_substitutes_real_numbers() -> None:

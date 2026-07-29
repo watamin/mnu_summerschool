@@ -269,6 +269,91 @@ def school_food_values(
     return result.reset_index(drop=True)
 
 
+def global_food_values(
+    frame: pd.DataFrame, *, top_n: int | None = None
+) -> pd.DataFrame:
+    """모든 학교의 같은 음식을 합쳐 전체 TF-IDF 가치 순위를 만든다."""
+
+    if top_n is not None and int(top_n) < 1:
+        raise ValueError("표시할 음식 수는 1개 이상이어야 합니다.")
+    counters, _ = _school_food_counters(frame)
+    school_count = len(counters)
+    total_items = sum(sum(counter.values()) for counter in counters.values())
+    foods = sorted({food for counter in counters.values() for food in counter})
+    records: list[dict[str, object]] = []
+    for food in foods:
+        school_counts = {
+            school: int(counter[food])
+            for school, counter in counters.items()
+            if counter[food] > 0
+        }
+        count = sum(school_counts.values())
+        food_school_count = len(school_counts)
+        tf = count / total_items
+        idf = math.log((1 + school_count) / (1 + food_school_count)) + 1.0
+        leading_school, leading_count = sorted(
+            school_counts.items(), key=lambda item: (-item[1], item[0])
+        )[0]
+        records.append(
+            {
+                "음식": food,
+                "전체 등장 횟수": int(count),
+                "전체 음식 수": int(total_items),
+                "전체 TF": tf,
+                "등장 학교 수": int(food_school_count),
+                "전체 학교 수": int(school_count),
+                "IDF": idf,
+                "전체 데이터 가치 점수": tf * idf,
+                "가장 많이 나온 학교": leading_school,
+                "해당 학교 횟수": int(leading_count),
+            }
+        )
+    result = pd.DataFrame.from_records(records).sort_values(
+        ["전체 데이터 가치 점수", "전체 등장 횟수", "음식"],
+        ascending=[False, False, True],
+    ).reset_index(drop=True)
+    result.insert(0, "전체 순위", range(1, len(result) + 1))
+    if top_n is not None:
+        result = result.head(int(top_n)).copy()
+    for column in ("전체 TF", "IDF", "전체 데이터 가치 점수"):
+        result[column] = result[column].round(4)
+    return result.reset_index(drop=True)
+
+
+def global_food_value_explanation(values: pd.DataFrame) -> str:
+    """전역 1위 음식에 실제 수를 대입한 Markdown 계산식을 만든다."""
+
+    required = {
+        "음식",
+        "전체 등장 횟수",
+        "전체 음식 수",
+        "등장 학교 수",
+        "전체 학교 수",
+        "가장 많이 나온 학교",
+        "해당 학교 횟수",
+    }
+    if values.empty or not required.issubset(values.columns):
+        raise ValueError("설명할 전체 음식 가치 결과가 없습니다.")
+    row = values.sort_values("전체 순위").iloc[0]
+    count = int(row["전체 등장 횟수"])
+    total = int(row["전체 음식 수"])
+    food_school_count = int(row["등장 학교 수"])
+    school_count = int(row["전체 학교 수"])
+    tf = count / total
+    idf = math.log((1 + school_count) / (1 + food_school_count)) + 1.0
+    value = tf * idf
+    return (
+        f"### 전체 음식 중요도 1위: {row['음식']}\n"
+        f"- 전체 TF = {count} ÷ {total} = **{tf:.4f}**\n"
+        f"- IDF = ln((1 + {school_count}) ÷ (1 + {food_school_count})) + 1 "
+        f"= **{idf:.4f}**\n"
+        f"- 전체 데이터 가치 점수 = {tf:.4f} × {idf:.4f} "
+        f"= **{value:.4f}**\n"
+        f"- 가장 많이 나온 학교: **{row['가장 많이 나온 학교']}에서 "
+        f"{int(row['해당 학교 횟수'])}회**"
+    )
+
+
 def school_food_value_explanation(values: pd.DataFrame) -> str:
     """TF-IDF 1위 음식에 실제 수를 대입한 Markdown 계산식을 만든다."""
 
