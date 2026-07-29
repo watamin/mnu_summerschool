@@ -56,7 +56,7 @@ def _complete_nim_response() -> dict[str, object]:
 
 @pytest.mark.parametrize(
     "contents",
-    ["nvapi-example_key", "NVIDIA_API_KEY=nvapi-example_key\n"],
+    ["nvapi-test", "NVIDIA_API_KEY=nvapi-test\n"],
 )
 def test_load_nvidia_api_key_accepts_raw_and_assignment_files(
     tmp_path: Path, contents: str
@@ -64,20 +64,20 @@ def test_load_nvidia_api_key_accepts_raw_and_assignment_files(
     key_file = tmp_path / "nvidia_nim.txt"
     key_file.write_text(contents, encoding="utf-8")
 
-    assert load_nvidia_api_key(key_path=key_file, environ={}) == "nvapi-example_key"
+    assert load_nvidia_api_key(key_path=key_file, environ={}) == "nvapi-test"
 
 
 def test_load_nvidia_api_key_prefers_environment_and_never_echoes_bad_value(
     tmp_path: Path,
 ) -> None:
     key_file = tmp_path / "nvidia_nim.txt"
-    key_file.write_text("nvapi-file_key", encoding="utf-8")
+    key_file.write_text("nvapi-file", encoding="utf-8")
     assert (
         load_nvidia_api_key(
             key_path=key_file,
-            environ={"NVIDIA_API_KEY": "nvapi-environment_key"},
+            environ={"NVIDIA_API_KEY": "nvapi-env"},
         )
-        == "nvapi-environment_key"
+        == "nvapi-env"
     )
 
     secret_bad_value = "this-must-never-appear"
@@ -113,7 +113,7 @@ def test_nim_client_sends_official_chat_payload_and_returns_answer(
     tmp_path: Path,
 ) -> None:
     key_file = tmp_path / "nvidia_nim.txt"
-    key_file.write_text("nvapi-example_key", encoding="utf-8")
+    key_file.write_text("nvapi-test", encoding="utf-8")
     session = RecordingSession(FakeResponse(_complete_nim_response()))
     client = NvidiaNimClient(key_path=key_file, session=session)
 
@@ -128,7 +128,7 @@ def test_nim_client_sends_official_chat_payload_and_returns_answer(
     assert call["url"] == DEFAULT_NIM_URL
     assert call["timeout"] == 30.0
     assert call["headers"] == {
-        "Authorization": "Bearer nvapi-example_key",
+        "Authorization": "Bearer nvapi-test",
         "Content-Type": "application/json",
     }
     payload = call["json"]
@@ -144,7 +144,7 @@ def test_nim_client_converts_http_and_malformed_responses_without_secret(
     tmp_path: Path,
 ) -> None:
     key_file = tmp_path / "nvidia_nim.txt"
-    secret = "nvapi-super_secret_value"
+    secret = "nvapi-secret"
     key_file.write_text(secret, encoding="utf-8")
 
     for response in (

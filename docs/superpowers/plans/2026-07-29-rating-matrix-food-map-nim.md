@@ -430,7 +430,7 @@ git commit -m "feat: integrate meal survey insights and chat tabs"
 
 - [ ] **Step 1: Update instructions and secret ignore rules**
 
-Add `nvidia_nim.txt` and `.env` key variants to `.gitignore`. Document that the default local file belongs one directory above the repository and may contain either the raw key or `NVIDIA_API_KEY=...`. Never include an example containing a real key prefix beyond the literal placeholder `nvapi-your-key`.
+Add `nvidia_nim.txt` and `.env` key variants to `.gitignore`. Document that the default local file belongs one directory above the repository and may contain either the raw key or `NVIDIA_API_KEY=...`. Never include an example that resembles a full key; use only the short test literal `nvapi-key` when a prefix example is necessary.
 
 - [ ] **Step 2: Run formatting and secret scans**
 
