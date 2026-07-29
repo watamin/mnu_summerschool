@@ -1,4 +1,4 @@
-"""Jupyter 교과서 9개 장을 각각 새 커널에서 실행해 검증한다."""
+"""Jupyter 교과서 9개 장과 부록을 각각 새 커널에서 실행해 검증한다."""
 
 from __future__ import annotations
 
@@ -28,6 +28,16 @@ REQUIRED_RESULT_KEYS = {
         "python_version",
         "notebook_version",
         "packages_checked",
+    },
+    "A": {
+        "value_types",
+        "second_dish",
+        "school_name",
+        "nested_date",
+        "json_is_dict",
+        "sample_rows",
+        "sample_menu",
+        "tutorial_steps",
     },
     "01": {"source", "raw_rows", "first_keys"},
     "02": {"clean_rows", "columns", "chart_ready"},
@@ -117,6 +127,14 @@ def _validate_chapter_result(
         >= (3, 11)
         and item["notebook_version"].split(".", 1)[0] == "7"
         and item["packages_checked"] >= 7,
+        "A": lambda item: item["value_types"] == ["str", "float", "bool"]
+        and item["second_dish"] == "미트볼로제파스타"
+        and item["school_name"] == "남악고등학교"
+        and item["nested_date"] == "20260624"
+        and item["json_is_dict"] is True
+        and item["sample_rows"] == 5
+        and "미트볼로제파스타" in item["sample_menu"]
+        and item["tutorial_steps"] == 6,
         "01": lambda item: bool(item["source"])
         and item["raw_rows"] >= 1
         and bool(item["first_keys"]),
@@ -153,7 +171,7 @@ def verify_textbook(
     timeout: int = 180,
     executed_dir: str | Path = DEFAULT_EXECUTED_DIR,
 ) -> list[dict[str, Any]]:
-    """9개 장을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
+    """9개 장과 부록을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
 
     _configure_notebook_event_loop()
     try:
@@ -186,7 +204,7 @@ def verify_textbook(
     missing = [path.name for path in paths if not path.is_file()]
     if missing:
         raise RuntimeError(
-            f"Jupyter 교과서 9개 장이 모두 필요합니다. 없는 파일: {', '.join(missing)}"
+            f"Jupyter 교과서 9개 장과 부록이 모두 필요합니다. 없는 파일: {', '.join(missing)}"
         )
 
     output_dir = Path(executed_dir)
@@ -197,6 +215,7 @@ def verify_textbook(
     try:
         for path in paths:
             notebook = nbformat.read(path, as_version=4)
+            chapter = str(notebook.metadata["jupyter_course"]["chapter"])
             started = time.perf_counter()
             try:
                 executed = NotebookClient(
@@ -213,7 +232,6 @@ def verify_textbook(
                 raise RuntimeError(f"{path.name} 새 커널 실행 실패: {exc}") from exc
             elapsed = round(time.perf_counter() - started, 2)
             result = _result_from_outputs(executed, path)
-            chapter = path.name[:2]
             _validate_chapter_result(chapter, result, path)
             executed_path = output_dir / path.name
             nbformat.write(executed, executed_path)

@@ -1,4 +1,4 @@
-"""중학생용 NEIS 급식 AI Jupyter 교과서 9개 장을 생성한다."""
+"""중학생용 NEIS 급식 AI Jupyter 교과서 9개 장과 부록을 생성한다."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = PROJECT_ROOT / "jupyter_course" / "chapters"
 CHAPTER_FILES = (
     "00_시작하기.ipynb",
-    "01_NEIS_API와_JSON.ipynb",
+    "A_JSON_기초_튜토리얼.ipynb",
+    "01_NEIS_API_요청하기.ipynb",
     "02_급식데이터_정리와_그래프.ipynb",
     "03_TFIDF_글자를_숫자로.ipynb",
     "04_유사도와_식단군집.ipynb",
@@ -72,6 +73,7 @@ def _lesson(
     summary: list[str],
     next_text: str,
 ) -> dict:
+    chapter_label = f"{number}장" if number.isdigit() else f"부록 {number}"
     keyword_table = "\n".join(
         ["| 용어 | 뜻 |", "|---|---|"]
         + [f"| **{word}** | {meaning} |" for word, meaning in keywords]
@@ -79,7 +81,7 @@ def _lesson(
     cells: list[dict] = [
         _markdown(
             f"""
-# {number}장. {title}
+# {chapter_label}. {title}
 
 | 오늘의 질문 | 예상 시간 |
 |---|---:|
@@ -377,140 +379,360 @@ print("설치 버전:", version(package_to_check))
             "Jupyter는 설명과 코드를 한 흐름에서 다루는 전자 교과서다.",
             "좋은 노트북은 새 커널에서도 위에서 아래로 실행된다.",
         ],
-        next_text="01장에서는 급식 데이터가 어디에서 오며 API와 JSON이 무엇인지 알아봅니다.",
+        next_text="부록 A에서는 아주 작은 급식 예제로 JSON의 모양을 한 단계씩 연습합니다.",
+    )
+
+
+def _appendix_json() -> dict:
+    return _lesson(
+        number="A",
+        title="JSON 기초 튜토리얼",
+        question="작은 급식 정보가 어떻게 JSON 자료로 자랄까?",
+        session="1회차 중반",
+        minutes=55,
+        objectives=[
+            "글자·숫자·참과 거짓의 자료형을 화면에서 확인할 수 있다.",
+            "목록에서는 위치 번호로, 사전에서는 이름표로 값을 찾을 수 있다.",
+            "사전과 목록이 겹친 자료에서 바깥쪽부터 한 칸씩 이동할 수 있다.",
+            "JSON 문자열을 Python 자료로 바꾸고 실제 급식 파일에서 메뉴를 찾을 수 있다.",
+        ],
+        connection="처음부터 긴 NEIS 응답을 보면 괄호와 영어 이름이 한꺼번에 보여 어렵습니다. 메뉴 하나에서 시작해 메뉴 목록, 이름표가 붙은 급식 카드, 상자 속 상자로 한 계단씩 넓혀 봅시다. 앞 활동에서 만든 자료가 다음 활동의 재료가 됩니다.",
+        keywords=[
+            ("값", "프로그램이 기억하는 글자·숫자·참과 거짓 같은 내용"),
+            ("자료형", "값을 어떤 방법으로 다룰지 알려 주는 종류"),
+            ("list", "여러 값을 순서대로 담은 Python 목록"),
+            ("dict", "이름표인 키와 값을 짝지어 담은 Python 사전"),
+            ("JSON", "데이터를 저장하거나 주고받기 위한 글자 형식"),
+            ("중첩", "목록이나 사전 안에 다른 목록이나 사전이 들어간 구조"),
+        ],
+        concept="""
+### 먼저 기억할 한 문장
+
+JSON은 어려운 계산식이 아니라 **자료의 모양을 글자로 적는 약속**입니다. Python에서 먼저 값·목록·사전을 다뤄 본 뒤 JSON을 보면 기호의 역할이 훨씬 잘 보입니다.
+
+### 1계단. 값 하나
+
+`"김치"`는 글자, `500.5`는 소수, `True`는 참과 거짓을 나타내는 값입니다. `type()`을 사용하면 Python이 각 값을 어떤 종류로 기억하는지 확인할 수 있습니다.
+
+### 2계단. 순서가 있는 목록
+
+여러 메뉴를 차례대로 담을 때는 `list`를 사용합니다. 목록은 대괄호 `[ ]`로 만들고 위치 번호는 0부터 시작합니다. 첫 번째 값은 `[0]`, 두 번째 값은 `[1]`입니다.
+
+### 3계단. 이름표가 붙은 사전
+
+학교명·날짜·열량처럼 역할이 다른 값은 `dict`에 담습니다. 사전은 중괄호 `{ }`로 만들고 `"school": "남악고등학교"`처럼 **키와 값**을 짝지어 적습니다. 값은 위치가 아니라 `meal_card["school"]`처럼 키로 찾습니다.
+
+### 4계단. 사전과 목록 겹치기
+
+급식 카드의 `dishes` 값으로 메뉴 목록을 넣을 수 있습니다. 이때 `meal_card["dishes"][1]`은 먼저 `dishes` 키로 목록을 꺼내고, 그 목록의 두 번째 값을 고른다는 뜻입니다. 긴 경로는 왼쪽부터 한 칸씩 읽습니다.
+
+### 5계단. Python 자료와 JSON 문자열 구분하기
+
+겉모양이 비슷해도 Python 사전은 계산에 바로 쓸 수 있는 자료이고, JSON은 저장하거나 전송할 때 사용하는 글자입니다. `json.loads()`는 JSON 글자를 Python 자료로 바꾸고, `json.dumps()`는 Python 자료를 JSON 글자로 바꿉니다.
+
+| JSON 모양 | 뜻 | Python으로 바뀐 뒤 |
+|---|---|---|
+| `{ }` | 키와 값을 묶은 객체 | `dict` |
+| `[ ]` | 순서가 있는 배열 | `list` |
+| `"김치"` | 글자 | `str` |
+| `500.5` | 숫자 | `float` |
+| `true` | 참 | `True` |
+
+### 6계단. 실제 파일 읽기
+
+마지막에는 저장소의 `data/namak_meals_sample.json`을 읽습니다. 이 파일은 `metadata`와 `rows`라는 두 이름표가 있는 사전입니다. `rows`의 값은 급식 다섯 건을 담은 목록입니다. 처음부터 긴 경로를 쓰지 않고 `파일 전체 → rows → 첫 행 → DDISH_NM`으로 나누어 이동합니다.
+""",
+        hand_example="""
+다음 세 줄을 보고 값을 찾는 방법을 말해 봅시다.
+
+```python
+menu = "김치볶음밥"
+dishes = ["밥", "국", "김치"]
+meal = {"school": "남악고등학교", "dishes": dishes}
+```
+
+| 찾을 값 | 먼저 고를 것 | 코드 |
+|---|---|---|
+| 메뉴 한 개 | 변수 이름 | `menu` |
+| 목록의 첫 번째 값 | 위치 0 | `dishes[0]` |
+| 학교명 | `school` 이름표 | `meal["school"]` |
+| 급식 카드의 두 번째 메뉴 | `dishes` 이름표, 위치 1 | `meal["dishes"][1]` |
+
+대괄호 안에 숫자가 있으면 **위치**, 따옴표가 있는 글자가 있으면 **이름표**를 고른다고 생각하면 됩니다.
+""",
+        prediction="- 값 세 개의 자료형은 차례로 `str`, `float`, `bool`이다.\n- 메뉴 목록의 위치 1에는 ‘미트볼로제파스타’가 있다.\n- JSON 글자를 `json.loads()`로 바꾸면 Python의 `dict`가 된다.\n- 실제 예비 파일의 `rows`에는 급식 다섯 건이 있다.",
+        code_sections=[
+            (
+                "값 하나와 자료형 확인하기",
+                """
+menu_name = "김치"
+calories = 500.5
+is_lunch = True
+
+value_types = [
+    type(menu_name).__name__,
+    type(calories).__name__,
+    type(is_lunch).__name__,
+]
+
+print("메뉴:", menu_name, "→", value_types[0])
+print("열량:", calories, "→", value_types[1])
+print("중식인가요?:", is_lunch, "→", value_types[2])
+""",
+                "글자는 `str`, 소수는 `float`, 참과 거짓은 `bool`로 나타났습니다. 자료형을 알면 더하기, 비교하기처럼 그 값으로 할 수 있는 일을 예상할 수 있습니다.",
+                """
+1. `menu_name`, `calories`, `is_lunch`는 값 하나씩을 기억하는 이름입니다.<br>
+2. `type(menu_name)`은 값의 자료형을 확인합니다.<br>
+3. `.__name__`은 `<class 'str'>` 대신 `str`처럼 짧은 이름만 꺼냅니다.<br>
+4. 세 자료형을 목록에 모아 차례대로 비교합니다.
+""",
+            ),
+            (
+                "메뉴를 목록에 차례대로 담기",
+                """
+dishes = ["양송이스프", "미트볼로제파스타", "피자"]
+first_dish = dishes[0]
+second_dish = dishes[1]
+
+print("메뉴 목록:", dishes)
+print("메뉴 수:", len(dishes))
+print("위치 0:", first_dish)
+print("위치 1:", second_dish)
+""",
+                "메뉴가 세 개 들어 있어 목록 길이는 3입니다. 사람에게 두 번째인 메뉴의 위치 번호는 1입니다. Python의 목록 위치가 0부터 시작하기 때문입니다.",
+                """
+1. `[ ]` 안에 쉼표로 나눈 값 세 개를 넣어 목록을 만듭니다.<br>
+2. `len(dishes)`는 목록에 든 값의 수를 셉니다.<br>
+3. `dishes[0]`은 첫 번째 메뉴를 고릅니다.<br>
+4. `dishes[1]`은 두 번째 메뉴를 골라 `second_dish`에 저장합니다.
+""",
+            ),
+            (
+                "이름표가 붙은 급식 카드 만들기",
+                """
+meal_card = {
+    "school": "남악고등학교",
+    "date": "20260624",
+    "calories": 500.5,
+}
+
+school_name = meal_card["school"]
+print("급식 카드:", meal_card)
+print("이름표 목록:", list(meal_card.keys()))
+print("학교명:", school_name)
+print("날짜:", meal_card["date"])
+""",
+                "사전은 위치 번호 대신 이름표로 값을 찾습니다. `school`, `date`, `calories`는 키이고, 각 키의 오른쪽에 있는 내용이 값입니다.",
+                """
+1. `{ }` 안에 `키: 값` 쌍을 세 개 적어 사전을 만듭니다.<br>
+2. `meal_card["school"]`은 `school` 이름표에 붙은 값을 꺼냅니다.<br>
+3. `meal_card.keys()`는 사전에 있는 이름표를 보여 줍니다.<br>
+4. 날짜는 계산할 수가 아니라 여덟 자리 표기이므로 글자로 저장했습니다.
+""",
+            ),
+            (
+                "사전 안에 메뉴 목록 넣기",
+                """
+meal_card["dishes"] = dishes
+
+meal_part = meal_card["dishes"]
+nested_date = meal_card["date"]
+nested_second_dish = meal_part[1]
+
+print("dishes의 자료형:", type(meal_part).__name__)
+print("한 칸씩 찾은 날짜:", nested_date)
+print("한 칸씩 찾은 두 번째 메뉴:", nested_second_dish)
+print("한 줄로 쓴 같은 경로:", meal_card["dishes"][1])
+""",
+                "`meal_card`는 사전이고 그 안의 `dishes` 값은 목록입니다. 한 칸씩 나누어 찾은 결과와 한 줄 경로로 찾은 결과가 같습니다.",
+                """
+1. `meal_card["dishes"] = dishes`는 급식 카드에 새 이름표와 목록을 붙입니다.<br>
+2. 먼저 `meal_card["dishes"]`만 실행해 안쪽 목록을 꺼냅니다.<br>
+3. 꺼낸 목록에서 `[1]`로 두 번째 메뉴를 찾습니다.<br>
+4. 익숙해지면 두 동작을 `meal_card["dishes"][1]`로 이어 쓸 수 있습니다.
+""",
+            ),
+            (
+                "JSON 글자를 Python 자료로 바꾸기",
+                """
+import json
+
+json_text = '''{
+  "school": "남악고등학교",
+  "date": "20260624",
+  "dishes": ["양송이스프", "미트볼로제파스타"]
+}'''
+
+loaded_data = json.loads(json_text)
+json_is_dict = isinstance(loaded_data, dict)
+restored_json_text = json.dumps(loaded_data, ensure_ascii=False, indent=2)
+
+print("바꾸기 전:", type(json_text).__name__)
+print("바꾼 뒤:", type(loaded_data).__name__)
+print("두 번째 메뉴:", loaded_data["dishes"][1])
+print("다시 JSON 글자로 바꾼 결과:\\n", restored_json_text)
+""",
+                "따옴표 세 개 사이의 JSON은 처음에는 긴 글자 하나인 `str`입니다. `json.loads()`를 실행한 뒤에야 키와 위치로 값을 찾을 수 있는 `dict`가 됩니다.",
+                """
+1. `json_text`는 JSON 모양을 하고 있지만 자료형은 아직 `str`입니다.<br>
+2. `json.loads(json_text)`는 JSON 객체와 배열을 Python 사전과 목록으로 바꿉니다.<br>
+3. 바뀐 자료에서는 `loaded_data["dishes"][1]`처럼 값을 찾을 수 있습니다.<br>
+4. `json.dumps(...)`는 Python 자료를 저장하거나 전송할 JSON 글자로 되돌립니다.<br>
+5. `ensure_ascii=False`는 한글을 그대로 보이게 하고 `indent=2`는 들여쓰기를 넣습니다.
+""",
+            ),
+            (
+                "실제 예비 JSON 파일에서 첫 급식 찾기",
+                SETUP_CODE
+                + """
+import json
+
+sample_path = PROJECT_ROOT / "data" / "namak_meals_sample.json"
+sample_data = json.loads(sample_path.read_text(encoding="utf-8"))
+
+sample_rows_data = sample_data["rows"]
+sample_first_row = sample_rows_data[0]
+sample_rows = len(sample_rows_data)
+sample_menu = sample_first_row["DDISH_NM"]
+
+print("파일 전체 자료형:", type(sample_data).__name__)
+print("가장 바깥 이름표:", list(sample_data.keys()))
+print("rows 자료형:", type(sample_rows_data).__name__)
+print("급식 행 수:", sample_rows)
+print("첫 급식 날짜:", sample_first_row["MLSV_YMD"])
+print("첫 메뉴 일부:", sample_menu[:100] + "...")
+
+chapter_result = {
+    "chapter": "A",
+    "value_types": value_types,
+    "second_dish": second_dish,
+    "school_name": school_name,
+    "nested_date": nested_date,
+    "json_is_dict": json_is_dict,
+    "sample_rows": sample_rows,
+    "sample_menu": sample_menu,
+    "tutorial_steps": 6,
+}
+""",
+                "연습용 작은 자료와 같은 방법으로 실제 파일도 읽었습니다. 바깥 사전에서 `rows` 목록을 고르고, 위치 0의 첫 급식 사전에서 날짜와 메뉴 키를 찾았습니다.",
+                """
+1. `sample_path`는 저장소 안의 실제 예비 JSON 파일 위치입니다.<br>
+2. `read_text(...)`로 파일 글자를 읽고 `json.loads(...)`로 Python 사전으로 바꿉니다.<br>
+3. `sample_data["rows"]`로 급식 목록을 꺼냅니다.<br>
+4. `sample_rows_data[0]`으로 첫 급식 사전을 고릅니다.<br>
+5. 마지막 사전에서 `MLSV_YMD`와 `DDISH_NM` 키의 값을 읽습니다.<br>
+6. 긴 경로에서 막히면 한 줄로 합치지 말고 이 코드처럼 중간 변수로 나눕니다.
+""",
+            ),
+        ],
+        exercise_text="목록 연습으로 돌아가 `practice_dishes`의 값 하나만 바꾸세요. 위치 번호 0과 1의 결과를 확인한 뒤, 사람의 순서와 Python 위치 번호가 어떻게 다른지 한 문장으로 적습니다.",
+        exercise_code="""
+practice_dishes = ["밥", "국", "김치"]
+
+print("첫 번째 메뉴, 위치 0:", practice_dishes[0])
+print("두 번째 메뉴, 위치 1:", practice_dishes[1])
+print("전체 메뉴 수:", len(practice_dishes))
+""",
+        check_questions=[
+            "`\"김치\"`, `500.5`, `True`의 자료형은 각각 무엇인가요?",
+            "목록의 첫 번째 값과 두 번째 값은 각각 몇 번 위치인가요?",
+            "사전에서 값은 위치 번호와 이름표 가운데 무엇으로 찾나요?",
+            "`meal_card[\"dishes\"][1]`을 두 단계로 나누어 설명해 보세요.",
+            "JSON 글자와 Python 사전은 어떻게 다르며 `json.loads()`는 무엇을 하나요?",
+            "긴 중첩 경로에서 오류가 났을 때 중간 변수를 만드는 까닭은 무엇인가요?",
+        ],
+        check_answer="""
+1. 차례로 `str`, `float`, `bool`입니다.<br>
+2. 위치 번호는 0부터 시작하므로 첫 번째 값은 0, 두 번째 값은 1입니다.<br>
+3. 사전은 `school` 같은 이름표인 키로 값을 찾습니다.<br>
+4. 먼저 `dishes` 키로 메뉴 목록을 꺼내고, 그 목록의 위치 1에서 두 번째 메뉴를 찾습니다.<br>
+5. JSON은 저장·전송할 때 쓰는 글자이고 Python 사전은 코드에서 바로 다룰 자료입니다. `json.loads()`는 JSON 글자를 Python 자료로 바꿉니다.<br>
+6. 각 단계의 자료형과 값을 따로 확인하면 어느 이름표나 위치에서 잘못되었는지 찾기 쉽기 때문입니다.
+""",
+        summary=[
+            "값 하나는 자료형을 가지며 `type()`으로 확인할 수 있다.",
+            "목록은 위치 번호로 찾고 첫 위치는 0이다.",
+            "사전은 이름표인 키로 값을 찾는다.",
+            "중첩 자료는 바깥쪽부터 한 칸씩 이동한다.",
+            "JSON은 글자 형식이고 `json.loads()`를 거쳐야 Python 자료로 다룰 수 있다.",
+            "실제 급식 파일도 작은 예제와 같은 규칙으로 읽을 수 있다.",
+        ],
+        next_text="01장에서는 JSON 문법 연습을 반복하지 않고, 공식 NEIS 주소에 조건을 붙여 GET 요청을 보내는 과정에 집중합니다.",
     )
 
 
 def _chapter_01() -> dict:
     return _lesson(
         number="01",
-        title="NEIS API와 JSON",
-        question="우리 학교 급식은 어디에서 올까?",
+        title="NEIS API 요청하기",
+        question="우리 학교 급식을 공식 서버에 어떻게 요청할까?",
         session="1회차 후반",
-        minutes=110,
+        minutes=55,
         objectives=[
             "API의 요청과 응답을 식당 주문에 비유해 설명할 수 있다.",
-            "JSON의 객체·배열·키·값을 구분하고 중첩된 값까지 찾아갈 수 있다.",
             "요청 주소와 조건을 확인한 뒤 NEIS API에 GET 요청을 보낼 수 있다.",
+            "상태 코드와 받은 행 수로 요청 결과를 확인할 수 있다.",
             "학교명보다 학교 코드가 정확한 식별값인 이유를 말할 수 있다.",
+            "연결에 실패했을 때 같은 기간의 예비 자료로 전환할 수 있다.",
         ],
-        connection="사람은 학교 급식표를 화면에서 읽지만 프로그램은 정해진 주소와 조건으로 데이터를 요청합니다. NEIS API에 학교 코드와 날짜를 보내고, 돌아온 JSON에서 메뉴를 찾습니다.",
+        connection="부록 A에서 JSON 파일을 여는 방법을 익혔습니다. 이제 자료를 이미 저장해 둔 파일에서 읽는 대신, NEIS 서버의 정해진 창구에 학교 코드와 날짜를 보내 직접 받아 봅시다.",
         keywords=[
             ("API", "다른 서비스에 정해진 규칙으로 데이터를 요청하는 창구"),
             ("요청", "주소와 조건을 서버에 보내는 일"),
-            ("JSON", "중괄호와 대괄호로 데이터의 구조를 나타내는 문자열 형식"),
-            ("객체", "중괄호 안에 키와 값을 짝지어 모은 구조"),
-            ("배열", "대괄호 안에 값을 순서대로 모은 구조"),
+            ("응답", "서버가 요청을 처리한 뒤 돌려주는 결과"),
+            ("params", "어느 학교·기간·형식의 자료를 원하는지 적은 요청 조건"),
             ("GET", "서버에 자료를 달라고 요청하는 대표적인 HTTP 방식"),
+            ("상태 코드", "서버가 요청을 어떻게 처리했는지 나타내는 숫자"),
             ("학교 코드", "같은 이름의 학교를 구분하는 공식 식별값"),
         ],
         concept="""
-API는 급식실 주문 창구와 비슷합니다. ‘남악고등학교, 2026년 6월 24일 급식’을 정해진 양식으로 요청하면 서버가 정해진 양식의 응답을 줍니다.
+API는 급식실 주문 창구와 비슷합니다. ‘남악고등학교, 2026년 6월 24일부터 30일까지 중식’을 정해진 양식으로 요청하면 서버가 정해진 양식의 응답을 줍니다.
 
-### 1. JSON은 데이터의 모양을 적는 규칙
-
-JSON은 데이터를 주고받을 때 많이 쓰는 **문자열 형식**입니다.
-
-- `{ }`는 **객체**입니다. 이름표인 키와 실제 값이 `:`을 사이에 두고 짝을 이룹니다.
-- `[ ]`는 **배열**입니다. 여러 값을 순서대로 담고, 위치 번호는 0부터 셉니다.
-- 키와 글자 값은 큰따옴표로 감쌉니다.
-- 한 객체 안의 여러 쌍, 한 배열 안의 여러 값은 쉼표로 나눕니다.
-
-JSON 문자열을 `json.loads()`에 넣으면 Python이 다룰 수 있는 사전과 목록으로 바뀝니다. JSON 객체는 Python의 `dict`, JSON 배열은 `list`가 됩니다.
-
-### 2. 안쪽 값은 바깥쪽부터 한 칸씩 찾기
-
-NEIS 응답은 상자 안에 상자가 든 구조입니다. `mealServiceDietInfo` 배열의 두 번째 칸에 `row`가 있고, 그 배열의 첫 번째 칸에 하루 급식 객체가 있습니다. 마지막으로 **MLSV_YMD** 키에서 날짜를, **DDISH_NM** 키에서 메뉴를 읽습니다.
-
-    응답 → mealServiceDietInfo → 두 번째 칸[1] → row → 첫 번째 칸[0] → DDISH_NM
-
-한 번에 외우지 말고, 각 단계에서 `type()`과 `keys()`를 출력해 현재 위치를 확인하면 됩니다.
-
-### 3. API 요청은 주소와 조건으로 나뉜다
+### 1. 주소와 조건을 나누어 적는다
 
 요청 주소는 `https://open.neis.go.kr/hub/mealServiceDietInfo`입니다. 교육청 코드, 학교 코드, 날짜 같은 조건은 `params` 사전에 넣습니다. `requests.get()`은 주소와 조건을 합쳐 GET 요청을 보내고, 서버는 상태 코드와 JSON 응답을 돌려줍니다.
+
+| 구분 | 이번 수업의 값 | 뜻 |
+|---|---|---|
+| URL | `.../mealServiceDietInfo` | 어느 API 창구로 갈지 |
+| `ATPT_OFCDC_SC_CODE` | `Q10` | 어느 교육청인지 |
+| `SD_SCHUL_CODE` | `7140272` | 어느 학교인지 |
+| `MLSV_FROM_YMD` | `20260624` | 조회 시작일 |
+| `MLSV_TO_YMD` | `20260630` | 조회 종료일 |
+
+### 2. 보내기 전에 완성된 주소를 확인한다
+
+코드는 `requests.Request(...).prepare()`로 요청 미리보기를 만듭니다. 이 단계에서는 아직 서버에 요청하지 않습니다. 주소에 `SD_SCHUL_CODE=7140272`와 날짜가 제대로 들어갔는지 먼저 확인합니다.
+
+### 3. 상태 코드를 보고 응답을 읽는다
+
+`requests.get(..., timeout=15)`가 실제 요청을 보냅니다. 상태 코드 200은 서버가 요청을 정상적으로 처리했다는 뜻입니다. `raise_for_status()`는 404나 500 같은 HTTP 오류를 찾아내고, `response.json()`은 받은 JSON 글자를 Python 자료로 바꿉니다. JSON의 기호와 중첩 경로가 낯설면 부록 A로 돌아가 다시 연습합니다.
+
+### 4. 실패할 때 사용할 자료도 준비한다
+
+교실 인터넷이나 NEIS 서버가 잠시 불안정할 수 있습니다. 그래서 같은 학교·같은 기간의 예비 자료를 저장소에 함께 둡니다. 요청이 실패했다고 아무 날짜의 자료를 대신 쓰지 않고, 요청 기간과 겹칠 때만 전환합니다.
 
 공식 안내에 따르면 인증키를 쓰지 않은 호출은 샘플 자료 5건으로 제한됩니다. 수업에서는 먼저 짧은 샘플 요청을 보내고, 별도 인증키를 사용할 때는 코드에 적지 않고 `NEIS_API_KEY` 환경 변수에서 읽습니다.
 """,
         hand_example="""
-다음 JSON에서 중괄호, 대괄호, 키, 값을 다른 색으로 표시해 보세요.
+식당에 주문서를 낸다고 생각하고 빈칸을 채워 보세요.
 
-    {
-      "school": "남악고등학교",
-      "meal": {
-        "date": "20260624",
-        "dishes": ["양송이스프", "미트볼로제파스타"]
-      }
-    }
+| 주문서 항목 | 적을 내용 |
+|---|---|
+| 주문 창구 | 급식식단정보 API 주소 |
+| 학교 | 학교명이 아니라 공식 학교 코드 `________` |
+| 시작일 | `________` |
+| 종료일 | `________` |
+| 받고 싶은 형식 | `json` |
 
-`school`의 값은 글자 하나이고, `meal`의 값은 또 다른 객체입니다. `dishes`의 값은 두 메뉴가 들어 있는 배열입니다. Python으로 바꾼 뒤 두 번째 메뉴를 찾는 경로는 `data["meal"]["dishes"][1]`입니다. 마지막 `[1]`이 두 번째 칸인 까닭은 위치 번호가 0부터 시작하기 때문입니다.
+URL은 주문 창구이고 `params`는 주문서의 조건입니다. 같은 ‘남악고’라는 글자가 있더라도 공식 코드를 사용해야 정확한 학교를 구별할 수 있습니다.
 """,
-        prediction="- JSON 연습에서 두 번째 메뉴는 ‘미트볼로제파스타’이다.\n- 요청 미리보기 주소에는 학교 코드 7140272가 들어간다.\n- 원본 첫 행의 키 목록에는 MLSV_YMD와 DDISH_NM이 있다.",
+        prediction="- 요청 미리보기 주소에는 학교 코드 7140272가 들어간다.\n- 요청을 보내기 전 기본값에서는 `live_request_sent`가 `False`이다.\n- 실시간 조회 실패 실험에서는 같은 기간의 남악고 예비 자료 5행을 사용한다.",
         code_sections=[
             (
-                "JSON 문자열을 Python 자료로 바꾸기",
+                "NEIS 요청 주소를 만들고 GET 함수 준비하기",
                 SETUP_CODE
                 + """
-import json
-
-practice_json_text = '''{
-  "school": "남악고등학교",
-  "meal": {
-    "date": "20260624",
-    "dishes": ["양송이스프", "미트볼로제파스타"]
-  }
-}'''
-practice_data = json.loads(practice_json_text)
-json_practice_menu = practice_data["meal"]["dishes"][1]
-
-print("바깥 자료형:", type(practice_data).__name__)
-print("바깥 키:", list(practice_data.keys()))
-print("meal의 자료형:", type(practice_data["meal"]).__name__)
-print("dishes의 자료형:", type(practice_data["meal"]["dishes"]).__name__)
-print("두 번째 메뉴:", json_practice_menu)
-""",
-                "JSON 문자열이 Python 사전으로 바뀌었습니다. 바깥 객체에서 `meal` 객체로, 다시 `dishes` 배열로 들어간 뒤 위치 번호 1의 값을 읽었습니다.",
-                """
-1. `practice_json_text`는 아직 글자로 된 JSON입니다.<br>
-2. `json.loads(...)`는 JSON 객체와 배열을 Python의 사전과 목록으로 바꿉니다.<br>
-3. `practice_data["meal"]`은 `meal` 키의 안쪽 객체를 고릅니다.<br>
-4. `["dishes"][1]`은 메뉴 배열의 두 번째 값을 고릅니다.<br>
-5. `type(...).__name__`은 현재 값이 사전인지 목록인지 확인합니다.
-""",
-            ),
-            (
-                "NEIS 중첩 응답에서 메뉴 찾아가기",
-                """
-practice_neis_payload = {
-    "mealServiceDietInfo": [
-        {"head": [{"list_total_count": 1}]},
-        {"row": [raw_rows[0]]},
-    ]
-}
-
-dataset_parts = practice_neis_payload["mealServiceDietInfo"]
-row_list = dataset_parts[1]["row"]
-first_row = row_list[0]
-first_keys = sorted(first_row.keys())
-
-print("1단계 dataset_parts:", type(dataset_parts).__name__, "길이", len(dataset_parts))
-print("2단계 row_list:", type(row_list).__name__, "길이", len(row_list))
-print("3단계 first_row:", type(first_row).__name__)
-print("4단계 날짜:", first_row["MLSV_YMD"])
-print("5단계 메뉴:", first_row["DDISH_NM"][:80] + "...")
-""",
-                "긴 경로도 바깥에서 안쪽으로 나누면 어렵지 않습니다. `list → dict → list → dict`처럼 현재 자료형을 확인하며 한 칸씩 이동했습니다.",
-                """
-1. `practice_neis_payload["mealServiceDietInfo"]`는 가장 바깥 키의 배열을 꺼냅니다.<br>
-2. `[1]`은 배열의 두 번째 객체를 고릅니다. 첫 번째 `[0]`에는 응답 설명인 `head`가 있습니다.<br>
-3. `["row"]`는 급식 행 배열을 고르고, 다시 `[0]`으로 첫 급식 행을 고릅니다.<br>
-4. 마지막 사전에서 `MLSV_YMD`와 `DDISH_NM` 값을 읽습니다.<br>
-5. 중간 결과를 여러 변수로 나누면 오류가 난 위치를 찾기 쉽습니다.
-""",
-            ),
-            (
-                "NEIS 요청 주소를 만들고 GET 함수 준비하기",
-                """
 import os
 import requests
 
@@ -545,6 +767,8 @@ def request_neis_meals(params, *, http_get=requests.get):
         "GET", NEIS_MEAL_URL, params=safe_params
     ).prepare().url
     return response.json(), safe_url, response.status_code
+
+first_keys = sorted(raw_rows[0].keys())
 
 print("요청 방식: GET")
 print("요청 주소:", NEIS_MEAL_URL)
@@ -596,7 +820,6 @@ chapter_result = {
     "source": classroom_source,
     "raw_rows": len(classroom_frame),
     "first_keys": first_keys,
-    "json_practice_menu": json_practice_menu,
     "prepared_request_url": prepared_request_url,
     "live_request_sent": False,
 }
@@ -635,24 +858,25 @@ else:
 chapter_result["live_request_sent"] = live_request_sent
 """,
         check_questions=[
-            "JSON의 `{ }`와 `[ ]`는 각각 무엇을 뜻하나요?",
-            "`data[\"meal\"][\"dishes\"][1]`에서 마지막 `[1]`은 무엇을 고르나요?",
             "NEIS 요청에서 URL과 params는 각각 어떤 역할을 하나요?",
+            "학교명 대신 학교 코드를 요청 조건에 넣는 까닭은 무엇인가요?",
+            "요청을 보내기 전에 미리보기 주소에서 무엇을 확인해야 하나요?",
             "`status_code`, `raise_for_status()`, `response.json()`은 차례로 무엇을 확인하거나 바꾸나요?",
             "실시간 API가 잠시 멈춰도 수업을 이어 갈 수 있는 이유는 무엇인가요?",
         ],
         check_answer="""
-1. 중괄호는 키와 값을 묶은 객체, 대괄호는 순서가 있는 배열입니다.<br>
-2. 위치 번호는 0부터 시작하므로 메뉴 배열의 두 번째 값을 고릅니다.<br>
-3. URL은 어느 API 창구로 갈지, params는 어느 학교의 어느 기간 자료를 달라고 할지 정합니다.<br>
+1. URL은 어느 API 창구로 갈지, params는 어느 학교의 어느 기간 자료를 달라고 할지 정합니다.<br>
+2. 비슷하거나 같은 학교 이름이 있어도 공식 코드는 학교를 정확히 구별하는 식별값이기 때문입니다.<br>
+3. 학교 코드 `7140272`, 교육청 코드 `Q10`, 시작일과 종료일이 맞는지 확인합니다.<br>
 4. 상태 코드는 서버 처리 결과를 나타내고, `raise_for_status()`는 HTTP 오류를 확인하며, `response.json()`은 JSON 응답을 Python 자료로 바꿉니다.<br>
 5. 같은 구조의 공식 NEIS 예비 데이터 5행을 프로젝트에 포함했기 때문입니다.
 """,
         summary=[
-            "JSON 객체는 Python 사전으로, JSON 배열은 Python 목록으로 바뀐다.",
-            "중첩된 JSON은 바깥쪽부터 자료형을 확인하며 한 칸씩 들어간다.",
             "GET 요청은 API 주소와 params 조건을 합쳐 서버에 자료를 요청한다.",
+            "학교명 대신 공식 학교 코드로 정확한 학교를 구별한다.",
+            "보내기 전에 미리보기 주소의 학교 코드와 날짜를 확인한다.",
             "응답은 상태 코드를 확인한 뒤 JSON으로 읽는다.",
+            "실시간 조회에 실패하면 같은 학교·같은 기간의 예비 자료로 전환한다.",
             "남악고의 공식 코드는 Q10 / 7140272다.",
         ],
         next_text="02장에서는 원본 문자열을 분석 가능한 표로 바꾸고 그래프로 읽습니다.",
@@ -1691,7 +1915,7 @@ def _chapter_08() -> dict:
 presentation_sections = [
     "1. 우리 학교에서 발견한 질문",
     "2. NEIS API와 공식 학교 코드",
-    "3. 원본 JSON과 전처리",
+    "3. JSON 기초와 원본 전처리",
     "4. 문자 n-gram TF-IDF와 코사인 유사도",
     "5. K-Means와 공개 추천 점수",
     "6. Jupyter 개인추천기 시연",
@@ -1712,7 +1936,7 @@ for section in presentation_sections:
                 "시연 전 확인표",
                 """
 demo_checklist = {
-    "00~07장 저장": True,
+    "00~07장과 부록 A 저장": True,
     "06장 새 커널에서 실행": True,
     "가상 입력만 사용": True,
     "예비 데이터 출처 표시": True,
@@ -1766,6 +1990,7 @@ print("근거:", evidence_sentence)
 
 CHAPTER_BUILDERS: tuple[Callable[[], dict], ...] = (
     _chapter_00,
+    _appendix_json,
     _chapter_01,
     _chapter_02,
     _chapter_03,

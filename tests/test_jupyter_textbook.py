@@ -15,7 +15,8 @@ from scripts.build_jupyter_textbook import CHAPTER_FILES, build_textbook
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_CHAPTERS = (
     "00_시작하기.ipynb",
-    "01_NEIS_API와_JSON.ipynb",
+    "A_JSON_기초_튜토리얼.ipynb",
+    "01_NEIS_API_요청하기.ipynb",
     "02_급식데이터_정리와_그래프.ipynb",
     "03_TFIDF_글자를_숫자로.ipynb",
     "04_유사도와_식단군집.ipynb",
@@ -24,6 +25,9 @@ EXPECTED_CHAPTERS = (
     "07_테스트와_모델카드.ipynb",
     "08_발표와_체험.ipynb",
 )
+API_CHAPTER = "01_NEIS_API_요청하기.ipynb"
+CLUSTER_CHAPTER = "04_유사도와_식단군집.ipynb"
+WIDGET_CHAPTER = "06_Jupyter_추천화면.ipynb"
 REQUIRED_SECTIONS = (
     "이 장에서 배울 내용",
     "생각 열기",
@@ -63,9 +67,18 @@ EXPECTED_RESULT_KEYS = {
         "source",
         "raw_rows",
         "first_keys",
-        "json_practice_menu",
         "prepared_request_url",
         "live_request_sent",
+    },
+    "A": {
+        "value_types",
+        "second_dish",
+        "school_name",
+        "nested_date",
+        "json_is_dict",
+        "sample_rows",
+        "sample_menu",
+        "tutorial_steps",
     },
     "02": {"clean_rows", "columns", "chart_ready"},
     "03": {
@@ -99,6 +112,12 @@ def _source(notebook: dict) -> str:
     return "\n".join(str(cell.get("source", "")) for cell in notebook["cells"])
 
 
+def _chapter_key(path: Path) -> str:
+    return str(
+        _read_notebook(path)["metadata"]["jupyter_course"]["chapter"]
+    )
+
+
 def _execute_code_cells(path: Path) -> dict:
     notebook = _read_notebook(path)
     module = types.ModuleType(f"chapter_{path.stem}")
@@ -121,7 +140,7 @@ def _execute_code_cells(path: Path) -> dict:
     return namespace
 
 
-def test_build_textbook_creates_nine_jupyter_notebooks(tmp_path: Path) -> None:
+def test_build_textbook_creates_ten_jupyter_notebooks(tmp_path: Path) -> None:
     paths = build_textbook(tmp_path)
 
     assert CHAPTER_FILES == EXPECTED_CHAPTERS
@@ -270,7 +289,7 @@ def test_personalization_inquiries_change_only_one_condition(
     tmp_path: Path,
 ) -> None:
     notebooks = {
-        path.name[:2]: _read_notebook(path) for path in build_textbook(tmp_path)
+        _chapter_key(path): _read_notebook(path) for path in build_textbook(tmp_path)
     }
 
     chapter_05_exercise = next(
@@ -294,7 +313,10 @@ def test_personalization_inquiries_change_only_one_condition(
     )
 
 
-@pytest.mark.parametrize("chapter", [f"{number:02d}" for number in range(9)])
+@pytest.mark.parametrize(
+    "chapter",
+    ["00", "A", *[f"{number:02d}" for number in range(1, 9)]],
+)
 def test_chapter_executes_independently_with_expected_result(
     tmp_path: Path,
     chapter: str,
@@ -311,13 +333,21 @@ def test_chapter_executes_independently_with_expected_result(
 def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     paths = build_textbook(tmp_path)
     results = {
-        path.name[:2]: _execute_code_cells(path)["chapter_result"]
+        _chapter_key(path): _execute_code_cells(path)["chapter_result"]
         for path in paths
     }
 
     assert results["00"]["sample_rows"] == 5
+    assert results["A"]["value_types"] == ["str", "float", "bool"]
+    assert results["A"]["second_dish"] == "미트볼로제파스타"
+    assert results["A"]["school_name"] == "남악고등학교"
+    assert results["A"]["nested_date"] == "20260624"
+    assert results["A"]["json_is_dict"] is True
+    assert results["A"]["sample_rows"] == 5
+    assert "미트볼로제파스타" in results["A"]["sample_menu"]
+    assert results["A"]["tutorial_steps"] == 6
     assert results["01"]["raw_rows"] == 5
-    assert results["01"]["json_practice_menu"] == "미트볼로제파스타"
+    assert "json_practice_menu" not in results["01"]
     assert "mealServiceDietInfo" in results["01"]["prepared_request_url"]
     assert "SD_SCHUL_CODE=7140272" in results["01"]["prepared_request_url"]
     assert results["01"]["live_request_sent"] is False
@@ -349,7 +379,7 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
 
 
 def test_api_chapter_teaches_live_meals_fallback_and_date_mismatch() -> None:
-    chapter_path = PROJECT_ROOT / "jupyter_course" / "chapters" / EXPECTED_CHAPTERS[1]
+    chapter_path = PROJECT_ROOT / "jupyter_course" / "chapters" / API_CHAPTER
     source = _source(_read_notebook(chapter_path))
 
     assert "load_classroom_frame" in source
@@ -456,8 +486,8 @@ def test_widget_callback_shows_source_and_handles_bad_input(tmp_path: Path) -> N
 
 def test_cluster_and_widget_chapters_split_code_and_explain_line_groups() -> None:
     chapter_dir = PROJECT_ROOT / "jupyter_course" / "chapters"
-    cluster_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[4]))
-    widget_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[6]))
+    cluster_source = _source(_read_notebook(chapter_dir / CLUSTER_CHAPTER))
+    widget_source = _source(_read_notebook(chapter_dir / WIDGET_CHAPTER))
 
     assert "중심을 옮깁니다" in cluster_source
     assert "입력 위젯 만들기" in widget_source

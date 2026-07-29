@@ -102,9 +102,11 @@ def test_verify_textbook_executes_all_chapters_in_fresh_kernels(
         executed_dir=tmp_path / "executed",
     )
 
-    assert len(reports) == 9
+    assert len(reports) == 10
     assert [report["chapter"] for report in reports] == [
-        f"{number:02d}" for number in range(9)
+        "00",
+        "A",
+        *[f"{number:02d}" for number in range(1, 9)],
     ]
     assert all(report["status"] == "PASS" for report in reports)
     assert all(report["code_cells"] >= 3 for report in reports)
