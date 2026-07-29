@@ -1,0 +1,229 @@
+{
+  "metadata": {
+    "snapshot_kind": "mokpo_school_catalog",
+    "office_code": "Q10",
+    "location": "목포시",
+    "source": "NEIS 교육정보 개방 포털",
+    "fetched_at_utc": "2026-07-29T08:26:04+00:00",
+    "school_count": 31
+  },
+  "schools": [
+    {
+      "school_name": "목상고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140296",
+      "address": "전남광주통합특별시 목포시 소영길 13"
+    },
+    {
+      "school_name": "목포고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140158",
+      "address": "전남광주통합특별시 목포시 산정로224번길 11"
+    },
+    {
+      "school_name": "목포공업고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140264",
+      "address": "전남광주통합특별시 목포시 용당로 100"
+    },
+    {
+      "school_name": "목포덕인고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140213",
+      "address": "전남광주통합특별시 목포시 죽선로 39-2"
+    },
+    {
+      "school_name": "목포마리아회고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140214",
+      "address": "전남광주통합특별시 목포시 양을로 229"
+    },
+    {
+      "school_name": "목포여자고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140159",
+      "address": "전남광주통합특별시 목포시 청호로 34"
+    },
+    {
+      "school_name": "목포여자상업고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140242",
+      "address": "전남광주통합특별시 목포시 영산로 413-3"
+    },
+    {
+      "school_name": "목포정명여자고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140215",
+      "address": "전남광주통합특별시 목포시 삼일로 45"
+    },
+    {
+      "school_name": "목포제일여자고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140160",
+      "address": "전남광주통합특별시 목포시 삼향천로 85"
+    },
+    {
+      "school_name": "목포조리과학고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140316",
+      "address": "전남광주통합특별시 목포시 상동로 87-1"
+    },
+    {
+      "school_name": "목포중앙고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140251",
+      "address": "전남광주통합특별시 목포시 지적로 36"
+    },
+    {
+      "school_name": "목포혜인여자고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140216",
+      "address": "전남광주통합특별시 목포시 죽선로 39-2"
+    },
+    {
+      "school_name": "목포홍일고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140211",
+      "address": "전남광주통합특별시 목포시 북항로 88"
+    },
+    {
+      "school_name": "문태고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140210",
+      "address": "전남광주통합특별시 목포시 용당로 138"
+    },
+    {
+      "school_name": "영흥고등학교",
+      "school_kind": "고등학교",
+      "office_code": "Q10",
+      "school_code": "7140212",
+      "address": "전남광주통합특별시 목포시 삼각로43번길 9"
+    },
+    {
+      "school_name": "목포덕인중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502018",
+      "address": "전남광주통합특별시 목포시 죽선로 39-2"
+    },
+    {
+      "school_name": "목포애향중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502014",
+      "address": "전남광주통합특별시 목포시 남악2로22번길 28-7"
+    },
+    {
+      "school_name": "목포여자중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502009",
+      "address": "전남광주통합특별시 목포시 유동로 35"
+    },
+    {
+      "school_name": "목포영화중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502020",
+      "address": "전남광주통합특별시 목포시 영산로 413-2"
+    },
+    {
+      "school_name": "목포옥암중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502013",
+      "address": "전남광주통합특별시 목포시 남악1로42번길 59-6"
+    },
+    {
+      "school_name": "목포유달중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502007",
+      "address": "전남광주통합특별시 목포시 산정로 171"
+    },
+    {
+      "school_name": "목포정명여자중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502019",
+      "address": "전남광주통합특별시 목포시 삼일로 45"
+    },
+    {
+      "school_name": "목포제일중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502006",
+      "address": "전남광주통합특별시 목포시 삼학로 277"
+    },
+    {
+      "school_name": "목포중앙여자중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502010",
+      "address": "전남광주통합특별시 목포시 백년대로280번길 24"
+    },
+    {
+      "school_name": "목포청호중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502008",
+      "address": "전남광주통합특별시 목포시 연산백련로31번길"
+    },
+    {
+      "school_name": "목포하당중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502012",
+      "address": "전남광주통합특별시 목포시 삼향천로 119"
+    },
+    {
+      "school_name": "목포항도여자중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502011",
+      "address": "전남광주통합특별시 목포시 상동로21번길 111"
+    },
+    {
+      "school_name": "목포혜인여자중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502021",
+      "address": "전남광주통합특별시 목포시 죽선로 39-2"
+    },
+    {
+      "school_name": "목포홍일중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502016",
+      "address": "전남광주통합특별시 목포시 북항로 88"
+    },
+    {
+      "school_name": "문태중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502015",
+      "address": "전남광주통합특별시 목포시 용당로 138"
+    },
+    {
+      "school_name": "영흥중학교",
+      "school_kind": "중학교",
+      "office_code": "Q10",
+      "school_code": "8502017",
+      "address": "전남광주통합특별시 목포시 삼각로43번길 9"
+    }
+  ]
+}
