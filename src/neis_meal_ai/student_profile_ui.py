@@ -46,6 +46,14 @@ def save_profile_callback(
 
     name = validate_student_name(username)
     frame = _survey_frame(survey_value)
+    assigned = store.load_survey(name)
+    if (
+        len(frame) != len(assigned)
+        or frame["순서"].tolist() != assigned["순서"].tolist()
+        or frame["음식"].astype(str).tolist() != assigned["음식"].tolist()
+        or frame["구분"].astype(str).tolist() != assigned["구분"].tolist()
+    ):
+        raise ValueError("배정된 음식 이름과 순서를 바꾸지 말고 평점 열만 입력해 주세요.")
     result = store.save_ratings(name, frame)
     restored = store.load_survey(name)
     if result.complete:

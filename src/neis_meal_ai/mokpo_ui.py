@@ -899,6 +899,8 @@ def create_mokpo_app(
                     value=pd.DataFrame(columns=["순서", "음식", "구분", "평점"]),
                     label="내 음식 30개 평가표",
                     interactive=True,
+                    static_columns=[0, 1, 2],
+                    pinned_columns=3,
                 )
 
             with gr.Tab("학생 행렬분해 실험"):

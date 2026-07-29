@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 from matplotlib.figure import Figure
+import pytest
 
 from neis_meal_ai.student_profile_ui import (
     export_ratings_callback,
@@ -44,6 +45,17 @@ def test_profile_callbacks_load_save_and_resume_authenticated_student(
     assert "2/30" in save_message and "중간 저장" in save_message
     assert saved_survey.loc[:1, "평점"].tolist() == [5, 2]
     assert resumed.loc[:1, "평점"].tolist() == [5, 2]
+
+
+def test_profile_save_rejects_changed_food_order(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    _, survey = load_profile_callback(store, "학생A")
+    first_food = survey.loc[0, "음식"]
+    survey.loc[0, "음식"] = survey.loc[1, "음식"]
+    survey.loc[1, "음식"] = first_food
+
+    with pytest.raises(ValueError, match="음식 이름과 순서"):
+        save_profile_callback(store, "학생A", survey)
 
 
 def test_matrix_dashboard_explains_when_class_data_is_not_ready(

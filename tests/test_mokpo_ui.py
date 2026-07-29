@@ -475,7 +475,14 @@ def test_mokpo_app_contains_food_value_matrix_map_and_nim_service(tmp_path: Path
             profile_store=profile_store,
         )
     assert not [warning for warning in emitted if "Expected" in str(warning.message)]
-    config = json.dumps(demo.get_config_file(), ensure_ascii=False, default=str)
+    config_file = demo.get_config_file()
+    profile_table_props = next(
+        component["props"]
+        for component in config_file["components"]
+        if component["props"].get("label") == "내 음식 30개 평가표"
+    )
+    assert profile_table_props["static_columns"] == [0, 1, 2]
+    config = json.dumps(config_file, ensure_ascii=False, default=str)
 
     assert isinstance(demo, gr.Blocks)
     for text in (
