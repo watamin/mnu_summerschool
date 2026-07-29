@@ -18,6 +18,8 @@
 - 만족도·Food MBTI·가성비·잔반·조합 점수는 실제 조사값이 아니라 수업용 예측 또는 대체지표라고 표시한다.
 - 학생은 코드를 작성하지 않고 최대 6명의 익명 설문 수집과 피드백 분석에 집중한다.
 - 응답은 브라우저 세션에만 두고 사용자가 요청할 때 익명 CSV로 내려받는다.
+- 2026-07-30·31 목포대 학생식당 메뉴는 사용자 제공 원문을 별도 JSON으로 보존하고 NEIS라고 표시하지 않는다.
+- 콘텐츠 기반, 유저 기반, 혼합 추천을 각각 계산해 실제 1~5점 리뷰와 비교한다.
 - 기존 남악고 웹 앱과 Jupyter 교과서 테스트를 깨뜨리지 않는다.
 
 ---
@@ -109,7 +111,7 @@ Run: `python -m pytest tests/test_text_vectors.py tests/test_recommender.py -q`
 
 **Interfaces:**
 - Consumes: cleaned meal frame and `cosine_scores`
-- Produces: `predict_satisfaction`, `best_worst_menus`, `school_statistics`, `signature_terms`, `recommend_high_schools`, `food_mbti`, `meal_buddies`, `analyze_feedback`, `cluster_feedback`, `pareto_candidates`, `menu_pair_scores`
+- Produces: `predict_satisfaction`, `best_worst_menus`, `user_based_prediction`, `evaluate_recommenders`, `school_statistics`, `signature_terms`, `recommend_high_schools`, `food_mbti`, `meal_buddies`, `analyze_feedback`, `cluster_feedback`, `pareto_candidates`, `menu_pair_scores`
 
 - [ ] **Step 1: Write failing satisfaction tests**
 
@@ -155,6 +157,14 @@ Assert participant-code uniqueness, grade and 1~5 rating validation, maximum six
 
 Use the fixed schema from the design. Convert actual rating to a 20~100 scale only for error comparison and preserve the original 1~5 rating in output.
 
+- [ ] **Step 12: Add failing collaborative-filter tests**
+
+Use a literal three-student, two-menu rating table. Assert target-rating exclusion, similarity-weighted prediction, item-mean and global-mean fallback, 0~100 scaling, hybrid weights, and hand-computed MAE.
+
+- [ ] **Step 13: Implement user-based and hybrid evaluation**
+
+Return prediction value, common-rating coverage, fallback label, and per-row errors. Do not read a target row's actual rating while predicting that row.
+
 ### Task 4: Service callbacks and four-tab Gradio app
 
 **Files:**
@@ -168,7 +178,7 @@ Use the fixed schema from the design. Convert actual rating to a 20~100 scale on
 
 - [ ] **Step 1: Write failing callback tests**
 
-Call callbacks directly and assert Korean explanations, Best/Worst tables, survey add/duplicate rejection, CSV export/import, predicted-vs-actual summary, school ranking, Food MBTI, buddy matrix, Pareto candidates, and safe error responses.
+Call callbacks directly and assert Korean explanations, Best/Worst tables, survey add/duplicate rejection, CSV export/import, content/user/hybrid prediction comparison, predicted-vs-actual summary, school ranking, Food MBTI, buddy matrix, Pareto candidates, and safe error responses.
 
 - [ ] **Step 2: Implement pure callback helpers**
 
@@ -218,7 +228,7 @@ Encode three Korean menu sentences, assert shape `(3, 384)`, finite values, norm
 
 - [ ] **Step 4: Write textbook-style instructions**
 
-Explain the survey workflow, CSV schema, actual-vs-predicted comparison, vector dimensions, cosine similarity, prediction formula, tabs, limitations, one-command service run, optional GPU installation, and TF-IDF fallback in Korean.
+Explain the survey workflow, 목포대 7월 30·31일 검증 절차, CSV schema, 콘텐츠 기반과 유저 기반의 차이, actual-vs-predicted comparison, vector dimensions, cosine similarity, prediction formula, tabs, limitations, one-command service run, optional GPU installation, and TF-IDF fallback in Korean.
 
 - [ ] **Step 5: Verify repository hygiene**
 
