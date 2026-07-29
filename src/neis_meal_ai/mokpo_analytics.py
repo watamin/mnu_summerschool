@@ -482,12 +482,34 @@ def food_map_coordinates(
             counters[name].items(), key=lambda item: (-item[1], item[0])
         )
     ]
+    item_limit = int(max_items)
     selected: list[str] = []
-    for food in [*rated_names, *recommended_names, *frequent_names]:
+    for food in rated_names:
         if food not in selected:
             selected.append(food)
-        if len(selected) >= int(max_items):
+        if len(selected) >= item_limit:
             break
+    remaining_slots = item_limit - len(selected)
+    frequency_candidates = [food for food in frequent_names if food not in selected]
+    frequency_quota = (
+        min(5, max(1, remaining_slots // 4), len(frequency_candidates))
+        if remaining_slots > 0
+        else 0
+    )
+    frequency_core_names = set(frequency_candidates[:frequency_quota])
+    recommendation_candidates = [
+        food
+        for food in recommended_names
+        if food not in selected and food not in frequency_core_names
+    ]
+    recommendation_quota = remaining_slots - len(frequency_core_names)
+    selected.extend(recommendation_candidates[:recommendation_quota])
+    selected.extend(frequency_candidates[:frequency_quota])
+    for food in [*recommendation_candidates[recommendation_quota:], *frequent_names]:
+        if len(selected) >= item_limit:
+            break
+        if food not in selected:
+            selected.append(food)
     if len(selected) < 2:
         raise ValueError("음식 지도를 만들 실제 음식이 2개 이상 필요합니다.")
 
@@ -519,6 +541,10 @@ def food_map_coordinates(
         if food in actual_ratings:
             category = "직접 평가"
             rating = float(actual_ratings[food])
+        elif food in frequency_core_names:
+            category = "빈도 핵심"
+            predicted = predicted_ratings.get(food, float("nan"))
+            rating = float(predicted) if math.isfinite(predicted) else 3.0
         elif food in predicted_ratings and math.isfinite(predicted_ratings[food]):
             category = "역행렬 추천"
             rating = float(predicted_ratings[food])

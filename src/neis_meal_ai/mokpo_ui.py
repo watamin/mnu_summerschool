@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import re
 import tempfile
 from pathlib import Path
@@ -40,6 +41,16 @@ from .text_vectors import TextEmbedder
 
 
 PREDICTION_COLUMNS = FEEDBACK_COLUMNS[:-2]
+
+
+def _message_chatbot_component(gradio_module: object, *, label: str):
+    """Gradio 4의 type 인자와 Gradio 6의 메시지 기본값을 함께 지원한다."""
+
+    chatbot = getattr(gradio_module, "Chatbot")
+    kwargs: dict[str, str] = {"label": str(label)}
+    if "type" in inspect.signature(chatbot).parameters:
+        kwargs["type"] = "messages"
+    return chatbot(**kwargs)
 
 
 def _recommendation_table(frame: pd.DataFrame) -> pd.DataFrame:
@@ -1053,7 +1064,9 @@ def create_mokpo_app(
             chat_school = gr.Dropdown(
                 schools, value=schools[0], label="질문할 학교"
             )
-            chat_history = gr.Chatbot(label="NVIDIA NIM 급식 데이터 해설")
+            chat_history = _message_chatbot_component(
+                gr, label="NVIDIA NIM 급식 데이터 해설"
+            )
             chat_question = gr.Textbox(
                 label="질문",
                 placeholder="예: 이 학교의 데이터 가치 1위 음식은 왜 1위인가요?",

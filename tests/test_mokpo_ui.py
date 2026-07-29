@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import gradio as gr
 import pandas as pd
@@ -11,6 +12,7 @@ from matplotlib.figure import Figure
 import mokpo_service
 from neis_meal_ai.mokpo_data import MokpoDataset, load_mokpo_dataset, load_validation_menus
 from neis_meal_ai.mokpo_ui import (
+    _message_chatbot_component,
     add_feedback_callback,
     analyze_uploaded_feedback_callback,
     analyze_feedback_callback,
@@ -106,6 +108,29 @@ class RecordingNimClient:
             {"question": question, "context": context, "history": list(history)}
         )
         return "TF와 IDF를 곱한 데이터 가치 점수가 가장 높기 때문입니다."
+
+
+def test_message_chatbot_component_supports_gradio_4_and_6_signatures() -> None:
+    legacy_calls: list[dict[str, str]] = []
+    current_calls: list[dict[str, str]] = []
+
+    class LegacyChatbot:
+        def __init__(self, *, label: str, type: str = "tuples") -> None:
+            legacy_calls.append({"label": label, "type": type})
+
+    class CurrentChatbot:
+        def __init__(self, *, label: str) -> None:
+            current_calls.append({"label": label})
+
+    _message_chatbot_component(
+        SimpleNamespace(Chatbot=LegacyChatbot), label="이전 버전"
+    )
+    _message_chatbot_component(
+        SimpleNamespace(Chatbot=CurrentChatbot), label="현재 버전"
+    )
+
+    assert legacy_calls == [{"label": "이전 버전", "type": "messages"}]
+    assert current_calls == [{"label": "현재 버전"}]
 
 
 def test_meal_chat_callback_grounds_answer_in_selected_school_values() -> None:

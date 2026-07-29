@@ -358,6 +358,48 @@ def test_food_map_coordinates_are_finite_reproducible_and_labeled() -> None:
     assert tomato["평점"] == expected
 
 
+def test_food_map_reserves_space_for_a_frequency_core_food() -> None:
+    rated_foods = [f"평가음식{index:02d}" for index in range(30)]
+    predicted_foods = [f"추천음식{index:02d}" for index in range(29)]
+    frequency_core = "반복해서나온핵심음식"
+    frame = pd.DataFrame(
+        [
+            {
+                "school_name": "목포지도고등학교",
+                "school_kind": "고등학교",
+                "dishes": [
+                    *rated_foods,
+                    *predicted_foods,
+                    *([frequency_core] * 12),
+                ],
+            }
+        ]
+    )
+    ratings = pd.DataFrame({"음식": rated_foods, "평점": [3] * len(rated_foods)})
+    recommendations = pd.DataFrame(
+        {
+            "음식": [*predicted_foods, frequency_core],
+            "예상 평점": [
+                *[round(5 - index * 0.05, 2) for index in range(len(predicted_foods))],
+                1.0,
+            ],
+        }
+    )
+
+    result = food_map_coordinates(
+        frame,
+        "목포지도고등학교",
+        ratings,
+        recommendations,
+        max_items=35,
+    )
+
+    assert len(result) == 35
+    core = result.loc[result["음식"] == frequency_core].iloc[0]
+    assert core["구분"] == "빈도 핵심"
+    assert core["평점"] == 1.0
+
+
 def test_food_mbti_uses_all_four_question_axes() -> None:
     code, explanation = food_mbti(
         rice_vs_noodle=5,

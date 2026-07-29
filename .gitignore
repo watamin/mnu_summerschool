@@ -13,3 +13,4 @@ outputs/
 neis.txt
 nvidia_nim.txt
 .env
+.env.*
