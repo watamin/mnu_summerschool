@@ -14,3 +14,6 @@ neis.txt
 nvidia_nim.txt
 .env
 .env.*
+runtime_data/
+mokpo_password.txt
+student_ratings*.csv
