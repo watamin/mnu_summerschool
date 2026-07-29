@@ -1282,13 +1282,14 @@ documents = []
 verification_results = []
 for source in manifest["documents"]:
     document_path = corpus_folder / source["file"]
-    document_bytes = document_path.read_bytes()
+    document_text = document_path.read_text(encoding="utf-8")
+    document_text = document_text.replace("\\r\\n", "\\n").replace("\\r", "\\n")
+    document_bytes = document_text.encode("utf-8")
     actual_sha256 = sha256(document_bytes).hexdigest()
     is_verified = actual_sha256 == source["sha256"]
     verification_results.append(is_verified)
     if not is_verified:
         raise ValueError(f"원문 확인 실패: {source['file']}")
-    document_text = document_bytes.decode("utf-8")
     documents.append((source["title"], document_text))
     print(
         source["title"],
@@ -1422,7 +1423,7 @@ document_sources_verified = all(verification_results)
 """,
                 """
 1. `sources.json`에서 파일명·제목·원문 SHA-256을 읽습니다.<br>
-2. `sha256(document_bytes).hexdigest()`로 현재 파일의 지문을 만들고 기록된 값과 비교합니다.<br>
+2. 운영체제마다 다른 줄바꿈을 `LF`로 통일한 뒤 `sha256(document_bytes).hexdigest()`로 지문을 만들고 기록된 값과 비교합니다.<br>
 3. `re.findall(r"[가-힣]{2,}", text)`는 한글 두 글자 이상인 덩어리만 찾습니다.<br>
 4. `Counter`는 문서 안에서 각 단어가 몇 번 나왔는지 세어 TF의 재료를 만듭니다.<br>
 5. `document_summaries`는 문서별 글자 수, 분석 단어 수, 서로 다른 단어 수를 먼저 보여 줍니다.<br>
