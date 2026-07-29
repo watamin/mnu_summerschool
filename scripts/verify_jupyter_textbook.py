@@ -31,7 +31,13 @@ REQUIRED_RESULT_KEYS = {
     },
     "01": {"source", "raw_rows", "first_keys"},
     "02": {"clean_rows", "columns", "chart_ready"},
-    "03": {"similarities", "query"},
+    "03": {
+        "similarities",
+        "query",
+        "document_count",
+        "document_top_terms",
+        "document_sources_verified",
+    },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
     "06": {
