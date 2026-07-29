@@ -147,11 +147,21 @@ def student_map_figure(coordinates: pd.DataFrame):
     return figure
 
 
-def matrix_dashboard_callback(store: StudentProfileStore):
+def matrix_dashboard_callback(
+    store: StudentProfileStore, *, anonymize: bool = False
+):
     """현재 DB의 평점 행렬을 평가하고 화면용 결과 묶음을 반환한다."""
 
     status = store.status()
     matrix = store.rating_matrix()
+    if anonymize:
+        aliases = {
+            str(name): f"학생 {position}"
+            for position, name in enumerate(matrix.index, start=1)
+        }
+        status = status.copy()
+        status["이름"] = status["이름"].map(aliases)
+        matrix = matrix.rename(index=aliases)
     observed_display = _observed_display(matrix)
     empty = pd.DataFrame()
     if len(matrix.index) < 2:

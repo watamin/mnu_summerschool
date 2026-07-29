@@ -101,6 +101,31 @@ def test_matrix_dashboard_marks_actual_and_predicted_cells_for_six_students(
     assert coordinates["학생"].tolist() == ["학생A", "학생B", "학생C", "학생D", "학생E", "학생F"]
 
 
+def test_classroom_dashboard_replaces_every_saved_name_with_seat_number(
+    tmp_path: Path,
+) -> None:
+    store = make_store(tmp_path)
+    fill_six_profiles(store)
+
+    outputs = matrix_dashboard_callback(store, anonymize=True)
+    _, status, observed, completed, _, recommendations, _, coordinates, _ = outputs
+    rendered = "\n".join(
+        frame.to_string()
+        for frame in (status, observed, completed, recommendations, coordinates)
+    )
+
+    for raw_name in ["학생A", "학생B", "학생C", "학생D", "학생E", "학생F"]:
+        assert raw_name not in rendered
+    assert status["이름"].tolist() == [
+        "학생 1",
+        "학생 2",
+        "학생 3",
+        "학생 4",
+        "학생 5",
+        "학생 6",
+    ]
+
+
 def test_export_callback_creates_long_form_csv(tmp_path: Path) -> None:
     store = make_store(tmp_path)
     survey = store.load_survey("학생A")

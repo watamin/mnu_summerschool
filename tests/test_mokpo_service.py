@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import socket
 
+from gradio_client import Client
 import pytest
+import requests
 
 import mokpo_service
 from neis_meal_ai.student_profiles import StudentProfileStore
@@ -81,18 +84,73 @@ def test_create_service_app_injects_real_profile_store(
     captured: dict[str, object] = {}
 
     def fake_create_app(
-        _dataset, _validation, *, embedder, nim_client, profile_store
+        _dataset, _validation, *, embedder, nim_client, profile_store, classroom_mode
     ):
         captured["embedder"] = embedder
         captured["nim_client"] = nim_client
         captured["profile_store"] = profile_store
+        captured["classroom_mode"] = classroom_mode
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
 
-    result = mokpo_service.create_service_app(profile_db_path=tmp_path / "class.sqlite3")
+    result = mokpo_service.create_service_app(
+        profile_db_path=tmp_path / "class.sqlite3", classroom_mode=True
+    )
 
     assert result == "app"
     assert isinstance(captured["profile_store"], StudentProfileStore)
     assert len(captured["profile_store"].food_pool) == 45
     assert captured["profile_store"].db_path == tmp_path / "class.sqlite3"
+    assert captured["classroom_mode"] is True
+
+
+@pytest.mark.filterwarnings(
+    "ignore:.*future.no_silent_downcasting.*:pandas.errors.Pandas4Warning"
+)
+@pytest.mark.filterwarnings(
+    "ignore:The copy keyword is deprecated.*:pandas.errors.Pandas4Warning"
+)
+def test_real_gradio_login_protects_api_and_propagates_student_name(
+    tmp_path: Path,
+) -> None:
+    password = "통합테스트암호"
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = int(probe.getsockname()[1])
+    app = mokpo_service.create_service_app(
+        profile_db_path=tmp_path / "http.sqlite3", classroom_mode=True
+    )
+    options = mokpo_service.launch_options(lan=True, password=password, port=port)
+    options.update(
+        server_name="127.0.0.1",
+        inbrowser=False,
+        prevent_thread_lock=True,
+        quiet=True,
+    )
+    app.launch(**options)
+    try:
+        base_url = f"http://127.0.0.1:{port}"
+        unauthenticated_config = requests.get(f"{base_url}/config", timeout=10)
+        wrong_login = requests.post(
+            f"{base_url}/login",
+            data={"username": "학생통합", "password": "틀린암호"},
+            timeout=10,
+        )
+        client = Client(
+            base_url,
+            auth=("학생통합", password),
+            verbose=False,
+        )
+        profile_message, profile_table = client.predict(
+            api_name="/load_student_profile"
+        )
+
+        assert unauthenticated_config.status_code == 401
+        assert wrong_login.status_code == 400
+        assert wrong_login.json()["detail"] == "Incorrect credentials."
+        assert "학생통합" in profile_message
+        assert "0/30" in profile_message
+        assert len(profile_table["data"]) == 30
+    finally:
+        app.close()

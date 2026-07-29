@@ -67,6 +67,21 @@ def test_survey_assignment_and_partial_ratings_survive_reopening_database(
     assert restored["평점"].tolist()[:3] == [5, 2, 0]
 
 
+def test_stale_blank_cells_do_not_delete_newer_saved_ratings(tmp_path: Path) -> None:
+    store = StudentProfileStore(tmp_path / "profiles.sqlite3", food_pool())
+    first_tab = store.load_survey("학생A")
+    stale_second_tab = store.load_survey("학생A")
+
+    first_tab.loc[0, "평점"] = 5
+    store.save_ratings("학생A", first_tab)
+    stale_second_tab.loc[1, "평점"] = 4
+    result = store.save_ratings("학생A", stale_second_tab)
+    restored = store.load_survey("학생A")
+
+    assert result.saved_count == 2
+    assert restored.loc[:1, "평점"].tolist() == [5, 4]
+
+
 def test_save_rejects_invalid_or_unassigned_ratings(tmp_path: Path) -> None:
     store = StudentProfileStore(tmp_path / "profiles.sqlite3", food_pool())
     store.load_survey("학생A")

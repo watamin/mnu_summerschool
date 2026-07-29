@@ -473,6 +473,7 @@ def test_mokpo_app_contains_food_value_matrix_map_and_nim_service(tmp_path: Path
             validation,
             nim_client=RecordingNimClient(),
             profile_store=profile_store,
+            classroom_mode=True,
         )
     assert not [warning for warning in emitted if "Expected" in str(warning.message)]
     config_file = demo.get_config_file()
@@ -514,6 +515,8 @@ def test_mokpo_app_contains_food_value_matrix_map_and_nim_service(tmp_path: Path
         assert text in config
     assert "학생은 코드를 작성하지 않고 익명 설문" not in config
     assert "실제 이름·학번·반·연락처·질병명" not in config
+    assert "전체 실제 평점 CSV" not in config
+    assert "export_student_ratings" not in config
 
 
 def test_app_excludes_catalog_schools_without_meal_rows() -> None:
@@ -549,6 +552,29 @@ def test_app_excludes_catalog_schools_without_meal_rows() -> None:
     assert "수집 제외 1개교" in config
 
 
+def test_local_teacher_app_has_admin_dashboard_without_student_profile_load(
+    tmp_path: Path,
+) -> None:
+    dataset, validation = _data()
+    foods = global_food_values(dataset.meals, top_n=45)["음식"].tolist()
+    store = StudentProfileStore(tmp_path / "profiles.sqlite3", foods)
+
+    config = json.dumps(
+        create_mokpo_app(
+            dataset, validation, profile_store=store, classroom_mode=False
+        ).get_config_file(),
+        ensure_ascii=False,
+        default=str,
+    )
+
+    assert "학생 행렬분해 실험" in config
+    assert "전체 실제 평점 CSV" in config
+    assert "export_student_ratings" in config
+    assert "내 프로필·30개 평가" not in config
+    assert "load_student_profile" not in config
+    assert "save_student_profile" not in config
+
+
 def test_mokpo_service_is_local_only_and_does_not_launch_on_import() -> None:
     options = mokpo_service.local_launch_options()
 
@@ -563,11 +589,12 @@ def test_mokpo_service_reuses_one_lazy_embedding_model(
     captured: dict[str, object] = {}
 
     def fake_create_app(
-        _dataset, _validation, *, embedder, nim_client, profile_store
+        _dataset, _validation, *, embedder, nim_client, profile_store, classroom_mode
     ):
         captured["embedder"] = embedder
         captured["nim_client"] = nim_client
         captured["profile_store"] = profile_store
+        captured["classroom_mode"] = classroom_mode
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
@@ -576,3 +603,4 @@ def test_mokpo_service_reuses_one_lazy_embedding_model(
     assert captured["embedder"].__class__.__name__ == "SentenceTransformerEmbedder"
     assert captured["nim_client"].__class__.__name__ == "NvidiaNimClient"
     assert isinstance(captured["profile_store"], StudentProfileStore)
+    assert captured["classroom_mode"] is False

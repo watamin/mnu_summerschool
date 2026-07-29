@@ -34,7 +34,11 @@ PASSWORD_PATH = PROJECT_ROOT.parent / "mokpo_password.txt"
 PROFILE_DB_PATH = PROJECT_ROOT / "runtime_data" / "student_profiles.sqlite3"
 
 
-def create_service_app(*, profile_db_path: str | Path = PROFILE_DB_PATH):
+def create_service_app(
+    *,
+    profile_db_path: str | Path = PROFILE_DB_PATH,
+    classroom_mode: bool = False,
+):
     dataset = load_mokpo_dataset(SCHOOL_PATH, MEAL_PATH)
     validation_menus, _ = load_validation_menus(MNU_PATH)
     food_pool = global_food_values(dataset.meals, top_n=45)["음식"].tolist()
@@ -45,6 +49,7 @@ def create_service_app(*, profile_db_path: str | Path = PROFILE_DB_PATH):
         embedder=SentenceTransformerEmbedder(),
         nim_client=NvidiaNimClient(key_path=NIM_KEY_PATH),
         profile_store=profile_store,
+        classroom_mode=classroom_mode,
     )
 
 
@@ -145,7 +150,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
     password = load_shared_password(args.password_file) if args.lan else None
-    app = create_service_app(profile_db_path=args.db)
+    app = create_service_app(profile_db_path=args.db, classroom_mode=args.lan)
     app.launch(**launch_options(lan=args.lan, password=password, port=args.port))
 
 

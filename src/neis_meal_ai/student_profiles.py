@@ -213,7 +213,7 @@ class StudentProfileStore:
     def save_ratings(
         self, name: object, rows: Iterable[Mapping[str, object]] | pd.DataFrame
     ) -> SaveResult:
-        """답한 평점을 저장하고 빈 평점은 기존 응답에서도 지운다."""
+        """답한 평점만 저장하며 빈 평점은 이미 저장된 값에 영향을 주지 않는다."""
 
         normalized = validate_student_name(name)
         records = rows.to_dict("records") if isinstance(rows, pd.DataFrame) else list(rows)
@@ -242,21 +242,17 @@ class StudentProfileStore:
                 raise ValueError(f"배정되지 않은 음식은 저장할 수 없습니다: {unknown[0]}")
             for food, rating in parsed:
                 if rating is None:
-                    connection.execute(
-                        "DELETE FROM ratings WHERE profile_id = ? AND food_name = ?",
-                        (profile_id, food),
-                    )
-                else:
-                    connection.execute(
-                        """
-                        INSERT INTO ratings(profile_id, food_name, rating, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(profile_id, food_name) DO UPDATE SET
-                            rating = excluded.rating,
-                            updated_at = excluded.updated_at
-                        """,
-                        (profile_id, food, rating, timestamp),
-                    )
+                    continue
+                connection.execute(
+                    """
+                    INSERT INTO ratings(profile_id, food_name, rating, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(profile_id, food_name) DO UPDATE SET
+                        rating = excluded.rating,
+                        updated_at = excluded.updated_at
+                    """,
+                    (profile_id, food, rating, timestamp),
+                )
             connection.execute(
                 "UPDATE profiles SET updated_at = ? WHERE profile_id = ?",
                 (timestamp, profile_id),

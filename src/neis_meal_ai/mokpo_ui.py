@@ -834,6 +834,7 @@ def create_mokpo_app(
     embedder: TextEmbedder | None = None,
     nim_client: NvidiaNimClient | None = None,
     profile_store: StudentProfileStore | None = None,
+    classroom_mode: bool = False,
 ):
     """학교 음식 가치·추천·피드백 분석을 묶은 완성형 Gradio 앱을 만든다."""
 
@@ -879,7 +880,7 @@ def create_mokpo_app(
             "일반화하지 않습니다."
         )
 
-        if profile_store is not None:
+        if profile_store is not None and classroom_mode:
             with gr.Tab("내 프로필·30개 평가"):
                 gr.Markdown(
                     "## 로그인한 이름으로 평가 저장하기\n"
@@ -903,6 +904,7 @@ def create_mokpo_app(
                     pinned_columns=3,
                 )
 
+        if profile_store is not None:
             with gr.Tab("학생 행렬분해 실험"):
                 gr.Markdown(
                     "## 학생끼리 겹쳐 평가한 정보로 빈칸 예측하기\n"
@@ -917,10 +919,11 @@ def create_mokpo_app(
                     matrix_refresh_button = gr.Button(
                         "현재 저장값으로 행렬분해", variant="primary"
                     )
-                    ratings_export_button = gr.Button("전체 실제 평점 CSV")
-                    ratings_export_file = gr.File(
-                        label="학생 평점 CSV", interactive=False
-                    )
+                    if not classroom_mode:
+                        ratings_export_button = gr.Button("전체 실제 평점 CSV")
+                        ratings_export_file = gr.File(
+                            label="학생 평점 CSV", interactive=False
+                        )
                 class_matrix_message = gr.Markdown()
                 profile_status_table = gr.Dataframe(
                     label="학생별 저장 현황", interactive=False
@@ -1362,7 +1365,7 @@ def create_mokpo_app(
             outputs=[chat_history, chat_question],
             api_name=False,
         )
-        if profile_store is not None:
+        if profile_store is not None and classroom_mode:
             def _load_authenticated_profile(request: gr.Request):
                 return load_profile_callback(profile_store, request.username)
 
@@ -1392,8 +1395,11 @@ def create_mokpo_app(
                 outputs=[profile_message, profile_table],
                 api_name=False,
             )
+        if profile_store is not None:
             matrix_refresh_button.click(
-                lambda: matrix_dashboard_callback(profile_store),
+                lambda: matrix_dashboard_callback(
+                    profile_store, anonymize=classroom_mode
+                ),
                 outputs=[
                     class_matrix_message,
                     profile_status_table,
@@ -1407,11 +1413,12 @@ def create_mokpo_app(
                 ],
                 api_name="student_matrix_factorization",
             )
-            ratings_export_button.click(
-                lambda: export_ratings_callback(profile_store),
-                outputs=[ratings_export_file],
-                api_name="export_student_ratings",
-            )
+            if not classroom_mode:
+                ratings_export_button.click(
+                    lambda: export_ratings_callback(profile_store),
+                    outputs=[ratings_export_file],
+                    api_name="export_student_ratings",
+                )
         gr.Markdown(
             "---\n추천 결과는 분석 실습용입니다. 실제 급식·알레르기·영양 판단은 "
             "학교 식단표와 영양사 안내를 먼저 확인하세요."
