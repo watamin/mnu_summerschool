@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -28,6 +29,8 @@ from neis_meal_ai.mokpo_ui import (
     school_value_analysis_callback,
 )
 from neis_meal_ai.mokpo_analytics import feedback_to_csv
+from neis_meal_ai.mokpo_analytics import global_food_values
+from neis_meal_ai.student_profiles import StudentProfileStore
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -459,14 +462,28 @@ def test_school_value_analysis_shows_real_formula_inputs_and_rankings() -> None:
     assert "전체 데이터 가치 점수" in overall.columns
 
 
-def test_mokpo_app_contains_food_value_matrix_map_and_nim_service() -> None:
+def test_mokpo_app_contains_food_value_matrix_map_and_nim_service(tmp_path: Path) -> None:
     dataset, validation = _data()
-    demo = create_mokpo_app(dataset, validation, nim_client=RecordingNimClient())
+    food_pool = global_food_values(dataset.meals, top_n=45)["음식"].tolist()
+    profile_store = StudentProfileStore(tmp_path / "profiles.sqlite3", food_pool)
+    with warnings.catch_warnings(record=True) as emitted:
+        warnings.simplefilter("always")
+        demo = create_mokpo_app(
+            dataset,
+            validation,
+            nim_client=RecordingNimClient(),
+            profile_store=profile_store,
+        )
+    assert not [warning for warning in emitted if "Expected" in str(warning.message)]
     config = json.dumps(demo.get_config_file(), ensure_ascii=False, default=str)
 
     assert isinstance(demo, gr.Blocks)
     for text in (
         "목포 급식 AI 탐험실",
+        "내 프로필·30개 평가",
+        "학생 행렬분해 실험",
+        "행렬분해 MAE",
+        "평점 저장",
         "학생 설문·개인 결과",
         "30개 음식 역행렬 추천",
         "모둠 피드백 분석",

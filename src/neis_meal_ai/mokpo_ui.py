@@ -39,6 +39,13 @@ from .mokpo_analytics import (
 from .mokpo_data import MokpoDataset
 from .nim_chat import NimChatError, NvidiaNimClient
 from .recommender import MENU_TYPE_KEYWORDS
+from .student_profile_ui import (
+    export_ratings_callback,
+    load_profile_callback,
+    matrix_dashboard_callback,
+    save_profile_callback,
+)
+from .student_profiles import StudentProfileStore
 from .text_vectors import TextEmbedder
 
 
@@ -826,6 +833,7 @@ def create_mokpo_app(
     *,
     embedder: TextEmbedder | None = None,
     nim_client: NvidiaNimClient | None = None,
+    profile_store: StudentProfileStore | None = None,
 ):
     """학교 음식 가치·추천·피드백 분석을 묶은 완성형 Gradio 앱을 만든다."""
 
@@ -870,6 +878,71 @@ def create_mokpo_app(
             "학생의 실제 리뷰를 비교합니다. 6명 이하의 작은 표본이므로 결과를 전체 학생에게 "
             "일반화하지 않습니다."
         )
+
+        if profile_store is not None:
+            with gr.Tab("내 프로필·30개 평가"):
+                gr.Markdown(
+                    "## 로그인한 이름으로 평가 저장하기\n"
+                    "목포 지역 학교 급식에서 뽑은 음식 30개를 1점(매우 싫음)부터 "
+                    "5점(매우 좋음)까지 평가합니다. 저장 버튼을 여러 번 눌러도 같은 "
+                    "프로필에 이어서 기록됩니다. 0은 아직 답하지 않은 문항입니다."
+                )
+                profile_message = gr.Markdown(
+                    "평가표 불러오기를 누르면 로그인한 이름의 30개 질문이 열립니다."
+                )
+                with gr.Row():
+                    profile_load_button = gr.Button("내 평가표 불러오기")
+                    profile_save_button = gr.Button("평점 저장", variant="primary")
+                profile_table = gr.Dataframe(
+                    headers=["순서", "음식", "구분", "평점"],
+                    datatype=["number", "str", "str", "number"],
+                    value=pd.DataFrame(columns=["순서", "음식", "구분", "평점"]),
+                    label="내 음식 30개 평가표",
+                    interactive=True,
+                )
+
+            with gr.Tab("학생 행렬분해 실험"):
+                gr.Markdown(
+                    "## 학생끼리 겹쳐 평가한 정보로 빈칸 예측하기\n"
+                    "각 학생은 45개 음식 중 30개만 평가합니다. 검은 점은 학생이 직접 "
+                    "평가한 셀, 흰 테두리는 행렬분해가 채운 셀입니다.\n\n"
+                    "$$\\hat r_{ui}=\\mu+b_u+b_i+P_u\\cdot Q_i$$\n\n"
+                    "**행렬분해 MAE**는 이미 아는 실제 평점 일부를 잠시 가리고 예측한 "
+                    "절댓값 오차의 평균입니다. 진짜 빈칸에는 아직 정답이 없으므로 "
+                    "정확도 계산에 쓰지 않습니다."
+                )
+                with gr.Row():
+                    matrix_refresh_button = gr.Button(
+                        "현재 저장값으로 행렬분해", variant="primary"
+                    )
+                    ratings_export_button = gr.Button("전체 실제 평점 CSV")
+                    ratings_export_file = gr.File(
+                        label="학생 평점 CSV", interactive=False
+                    )
+                class_matrix_message = gr.Markdown()
+                profile_status_table = gr.Dataframe(
+                    label="학생별 저장 현황", interactive=False
+                )
+                matrix_metrics_table = gr.Dataframe(
+                    label="홀드아웃 검증 결과", interactive=False
+                )
+                with gr.Tab("실제 평점 행렬"):
+                    observed_matrix_table = gr.Dataframe(
+                        label="빈칸을 그대로 둔 관측 행렬", interactive=False
+                    )
+                with gr.Tab("빈칸 완성 행렬"):
+                    completed_matrix_table = gr.Dataframe(
+                        label="실제·예측 구분 완성 행렬", interactive=False
+                    )
+                matrix_heatmap = gr.Plot(label="실제와 예측 평점 열지도")
+                matrix_recommendations = gr.Dataframe(
+                    label="학생별 미평가 음식 예상 Best·Worst", interactive=False
+                )
+                with gr.Row():
+                    student_map = gr.Plot(label="학생 식성 잠재벡터 지도")
+                    student_coordinates = gr.Dataframe(
+                        label="학생 지도 번호와 좌표", interactive=False
+                    )
 
         with gr.Tab("학생 설문·개인 결과"):
             gr.Markdown("## 1. 실제 학교 급식 Best·Worst 예측")
@@ -1287,6 +1360,56 @@ def create_mokpo_app(
             outputs=[chat_history, chat_question],
             api_name=False,
         )
+        if profile_store is not None:
+            def _load_authenticated_profile(request: gr.Request):
+                return load_profile_callback(profile_store, request.username)
+
+            def _save_authenticated_profile(ratings, request: gr.Request):
+                return save_profile_callback(
+                    profile_store, request.username, ratings
+                )
+
+            # ``from __future__ import annotations`` 때문에 Gradio가 문자열형
+            # Request 주석을 일반 입력으로 세지 않도록 실제 클래스로 돌려놓는다.
+            _load_authenticated_profile.__annotations__["request"] = gr.Request
+            _save_authenticated_profile.__annotations__["request"] = gr.Request
+
+            profile_load_button.click(
+                _load_authenticated_profile,
+                outputs=[profile_message, profile_table],
+                api_name="load_student_profile",
+            )
+            profile_save_button.click(
+                _save_authenticated_profile,
+                inputs=[profile_table],
+                outputs=[profile_message, profile_table],
+                api_name="save_student_profile",
+            )
+            demo.load(
+                _load_authenticated_profile,
+                outputs=[profile_message, profile_table],
+                api_name=False,
+            )
+            matrix_refresh_button.click(
+                lambda: matrix_dashboard_callback(profile_store),
+                outputs=[
+                    class_matrix_message,
+                    profile_status_table,
+                    observed_matrix_table,
+                    completed_matrix_table,
+                    matrix_metrics_table,
+                    matrix_recommendations,
+                    matrix_heatmap,
+                    student_coordinates,
+                    student_map,
+                ],
+                api_name="student_matrix_factorization",
+            )
+            ratings_export_button.click(
+                lambda: export_ratings_callback(profile_store),
+                outputs=[ratings_export_file],
+                api_name="export_student_ratings",
+            )
         gr.Markdown(
             "---\n추천 결과는 분석 실습용입니다. 실제 급식·알레르기·영양 판단은 "
             "학교 식단표와 영양사 안내를 먼저 확인하세요."
