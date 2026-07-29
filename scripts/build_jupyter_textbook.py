@@ -280,7 +280,7 @@ def _chapter_00() -> dict:
 
 `.\\.venv\\Scripts\\python.exe -m notebook`을 실행하고 PowerShell 창을 열어 둡니다. 브라우저가 열리면 이 0장으로 들어옵니다.
 
-`notebook`은 Jupyter 화면을 열고, `ipykernel`은 Code 셀을 실행합니다. `ipywidgets`는 06장의 입력 상자와 버튼을 만듭니다. `pandas`와 `numpy`는 급식 표와 숫자를 다루며, `matplotlib`은 그래프를 그리고 `requests`는 NEIS에 데이터를 요청합니다. 이것이 **각 패키지가 하는 일**입니다.
+`notebook`은 Jupyter 화면을 열고, `ipykernel`은 Code 셀을 실행합니다. `ipywidgets`는 06장의 입력 상자와 버튼을 만들고, `gradio`는 완성된 추천기를 웹 화면으로 엽니다. `pandas`와 `numpy`는 급식 표와 숫자를 다루며, `matplotlib`은 그래프를 그리고 `requests`는 NEIS에 데이터를 요청합니다. 이것이 **각 패키지가 하는 일**입니다.
 
 Jupyter Notebook은 **설명 페이지와 실험실이 한 화면에 붙어 있는 전자 교과서**입니다. Markdown 셀은 교과서의 설명이고, Code 셀은 직접 눌러 보는 실험 장치입니다.
 
@@ -291,7 +291,7 @@ Jupyter Notebook은 **설명 페이지와 실험실이 한 화면에 붙어 있�
         hand_example="""
 종이에 큰 학교 공구함과 작은 프로젝트 공구함을 그립니다. Python, Jupyter, Pandas, 다른 수업 패키지를 어느 공구함에 넣을지 표시해 보세요. 이번 수업 패키지는 `.venv`라고 쓴 작은 공구함에 모입니다.
 """,
-        prediction="- Python은 3.11 이상으로 표시된다.\n- Notebook과 핵심 패키지 7개의 버전이 표시된다.\n- 예비 급식 행 수가 5로 표시된다.",
+        prediction="- Python은 3.11 이상으로 표시된다.\n- Notebook과 핵심 패키지 8개의 버전이 표시된다.\n- 예비 급식 행 수가 5로 표시된다.",
         code_sections=[
             (
                 "Python·Jupyter·핵심 패키지 확인",
@@ -302,7 +302,7 @@ from jupyter_course.notebook_support import evaluate_jupyter_environment
 
 python_version = sys.version.split()[0]
 package_names = [
-    "notebook", "ipykernel", "ipywidgets", "pandas",
+    "notebook", "ipykernel", "ipywidgets", "gradio", "pandas",
     "numpy", "matplotlib", "requests",
 ]
 package_versions = {name: version(name) for name in package_names}
@@ -958,10 +958,12 @@ print(meal_df[learning_columns].isna().sum().to_string())
                 "날짜별 열량 막대그래프",
                 """
 import os
+import io
 import matplotlib
 if os.getenv("NEIS_JUPYTER_VERIFY") == "1":
     matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from IPython.display import Image, display
 
 ax = meal_df.plot.bar(x="date", y="calories", legend=False, color="#4C78A8")
 ax.set_title("Namak High School lunch calories (relative view)")
@@ -971,7 +973,10 @@ plt.tight_layout()
 if os.getenv("NEIS_JUPYTER_VERIFY") != "1":
     plt.show()
 else:
+    image_buffer = io.BytesIO()
+    plt.savefig(image_buffer, format="png", bbox_inches="tight")
     plt.close()
+    display(Image(data=image_buffer.getvalue()))
 
 chapter_result = {
     "chapter": "02",
@@ -984,7 +989,7 @@ chapter_result = {
                 """
 1. `meal_df.plot.bar`는 `date`를 가로축, `calories`를 세로축으로 그립니다.<br>
 2. `set_title`, `set_xlabel`, `set_ylabel`은 그래프의 제목과 축 이름을 붙입니다.<br>
-3. `NEIS_JUPYTER_VERIFY`가 설정된 자동 검증에서는 화면 대신 그래프를 닫습니다.
+3. 자동 검증에서는 그래프를 PNG 그림으로 바꾸어 노트북 출력에 저장합니다. 그래서 학생이 셀을 다시 실행하지 않아도 완성된 그래프를 먼저 볼 수 있습니다.
 """,
             ),
         ],
@@ -1845,6 +1850,7 @@ allergy_widget = widgets.SelectMultiple(
 run_button = widgets.Button(description="추천 실행", button_style="primary")
 output_widget = widgets.Output()
 callback_state = {"status": "not_run", "rows": 0, "message": ""}
+print("입력 화면 준비 완료: 글자 입력 2개, 선택 상자 2개, 슬라이더 1개, 버튼 1개")
 """,
                 "Text는 글자 입력, SelectMultiple은 여러 항목 선택, IntSlider는 1~5 범위 선택을 맡습니다. `callback_state`는 버튼이 실제로 성공했는지 시험하기 위한 작은 기록장입니다.",
                 """

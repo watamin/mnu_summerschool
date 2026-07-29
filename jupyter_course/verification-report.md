@@ -10,6 +10,7 @@
 - Python 3.12.13
 - Jupyter Notebook 7.6.1
 - ipywidgets 8.1.8
+- Gradio 6.20.0
 - nbclient 0.11.0
 - nbformat 5.10.4
 - ipykernel 7.3.0
@@ -19,16 +20,21 @@
 ```powershell
 .\.venv\Scripts\python.exe -m pip check
 .\.venv\Scripts\python.exe scripts\build_jupyter_textbook.py
+.\.venv\Scripts\python.exe scripts\freeze_jupyter_outputs.py
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe scripts\verify_jupyter_textbook.py
+.\.venv\Scripts\python.exe web_app.py
 ```
 
 결과는 다음과 같습니다.
 
 - 패키지 연결 오류 없음
-- 자동 테스트 85개 통과
+- 자동 테스트 92개 통과
 - 노트북 10개 통과, 실패 0개
-- 새 커널 실행 합계 12.90초
+- 새 커널 실행 합계 13.10초
+- 노트북 10개에 실행 번호와 출력 저장, 02장의 PNG 그래프 포함
+- 로컬 웹 추천기 HTTP 200, `127.0.0.1` 전용 접속, 외부 공유 링크 없음
+- 웹 버튼 API 호출 결과: 추천 3행·결과 열 7개 반환
 - 인증키 없는 NEIS 샘플 GET 요청: HTTP 200, 급식 5행 확인
 
 ## 장별 새 커널 실행
@@ -37,16 +43,16 @@
 
 | 장 | 파일 | 코드 셀 | 설명 셀 | 실행 시간 | 결과 |
 |---:|---|---:|---:|---:|---|
-| 00 | `00_시작하기.ipynb` | 4 | 18 | 1.60초 | PASS |
-| 부록 A | `A_JSON_기초_튜토리얼.ipynb` | 8 | 30 | 1.25초 | PASS |
-| 01 | `01_NEIS_API_요청하기.ipynb` | 4 | 18 | 1.22초 | PASS |
-| 02 | `02_급식데이터_정리와_그래프.ipynb` | 5 | 21 | 1.68초 | PASS |
-| 03 | `03_TFIDF_글자를_숫자로.ipynb` | 7 | 27 | 1.17초 | PASS |
+| 00 | `00_시작하기.ipynb` | 4 | 18 | 1.51초 | PASS |
+| 부록 A | `A_JSON_기초_튜토리얼.ipynb` | 8 | 30 | 1.28초 | PASS |
+| 01 | `01_NEIS_API_요청하기.ipynb` | 4 | 18 | 1.30초 | PASS |
+| 02 | `02_급식데이터_정리와_그래프.ipynb` | 5 | 21 | 1.74초 | PASS |
+| 03 | `03_TFIDF_글자를_숫자로.ipynb` | 7 | 27 | 1.30초 | PASS |
 | 04 | `04_유사도와_식단군집.ipynb` | 4 | 18 | 1.25초 | PASS |
-| 05 | `05_개인추천_점수설계.ipynb` | 4 | 18 | 1.25초 | PASS |
-| 06 | `06_Jupyter_추천화면.ipynb` | 5 | 21 | 1.31초 | PASS |
-| 07 | `07_테스트와_모델카드.ipynb` | 4 | 18 | 1.27초 | PASS |
-| 08 | `08_발표와_체험.ipynb` | 4 | 18 | 0.90초 | PASS |
+| 05 | `05_개인추천_점수설계.ipynb` | 4 | 18 | 1.27초 | PASS |
+| 06 | `06_Jupyter_추천화면.ipynb` | 5 | 21 | 1.35초 | PASS |
+| 07 | `07_테스트와_모델카드.ipynb` | 4 | 18 | 1.22초 | PASS |
+| 08 | `08_발표와_체험.ipynb` | 4 | 18 | 0.88초 | PASS |
 
 각 장은 앞 장의 변수나 실행 상태를 넘겨받지 않고 별도의 Python 커널에서 실행했습니다.
 
@@ -58,12 +64,14 @@
 - 목록의 두 번째 메뉴와 실제 예비 JSON 5행
 - NEIS GET 요청의 주소·조건·응답 계약과 인증키 비노출
 - 실시간 NEIS 조회 실패 시 같은 기간의 예비 자료 사용
-- 9개 파일명, 셀 ID, Jupyter 메타데이터
+- 10개 파일명, 셀 ID, Jupyter 메타데이터
 - n-gram 경계 조각과 흔한·드문 조각의 IDF 차이
 - 한국어 원문 3편의 SHA-256, 문서별 분석 단어 수와 상위 TF-IDF 상세 계산
 - 같은 단어의 문서별 점수 12행과 급식 메뉴 유사도 순위 5행
 - 군집과 추천 결과의 필수 값
 - 06장 버튼 콜백과 잘못된 입력 안내
+- 실행 결과가 모든 코드 셀에 저장되었는지, 02장 그래프가 PNG로 저장되었는지 여부
+- 웹 추천기가 남악고 예비 데이터로 열리고 개인정보 금지·추천 이유·안전 문구를 표시하는지 여부
 - 07장의 네 가지 시험과 모델 카드
 - 노트북을 다시 생성해도 같은 파일이 만들어지는지 여부
 - Windows와 다른 운영체제에서 같은 LF 줄바꿈을 쓰는지 여부

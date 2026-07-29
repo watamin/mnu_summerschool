@@ -30,6 +30,18 @@ py -3 -m venv .venv
 
 브라우저가 열리면 `jupyter_course/chapters/00_시작하기.ipynb`부터 차례대로 공부합니다. 자세한 수업 방법과 파일 순서는 [학생 안내](jupyter_course/README.md)에 정리되어 있습니다.
 
+## 완성된 웹 추천기 바로 열기
+
+설치를 마쳤다면 노트북을 따로 열지 않아도 완성된 추천기를 실행할 수 있습니다.
+
+```powershell
+.\.venv\Scripts\python.exe web_app.py
+```
+
+잠시 뒤 브라우저에 `우리 학교 급식 추천 실험실`이 열립니다. 남악고 NEIS 예비 데이터 5일이 처음부터 준비되어 있으므로 좋아하는 메뉴, 피하고 싶은 메뉴, 선호 유형, 매운맛을 정한 뒤 `추천 결과 보기`를 누르면 됩니다. 이름·학번은 받지 않으며 알레르기 번호도 실제 개인정보가 아닌 수업용 가상 값만 사용합니다. 종료할 때는 PowerShell에서 `Ctrl+C`를 누릅니다.
+
+노트북에는 미리 실행한 결과도 저장되어 있습니다. 학생은 실행 전에도 표와 그래프를 읽을 수 있고, 실습할 때는 `Kernel → Restart Kernel and Run All Cells`로 자기 컴퓨터에서 같은 결과가 나오는지 확인합니다.
+
 ## 여섯 번의 수업
 
 | 회차 | 공부할 내용 | 수업을 마칠 때 남는 것 |
@@ -89,6 +101,7 @@ mnu_summerschool/
 ├─ requirements-jupyter.txt      수업에 필요한 Python 패키지 목록
 ├─ scripts/                      노트북 생성과 실행 확인 도구
 ├─ src/neis_meal_ai/             NEIS·전처리·추천 기능
+├─ web_app.py                     완성된 급식 추천 웹 프로그램
 └─ tests/                        자동 테스트
 ```
 

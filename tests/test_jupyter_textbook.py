@@ -343,6 +343,7 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     }
 
     assert results["00"]["sample_rows"] == 5
+    assert results["00"]["packages_checked"] == 8
     assert results["A"]["value_types"] == ["str", "float", "bool"]
     assert results["A"]["second_dish"] == "미트볼로제파스타"
     assert results["A"]["school_name"] == "남악고등학교"

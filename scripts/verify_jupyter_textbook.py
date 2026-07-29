@@ -131,7 +131,7 @@ def _validate_chapter_result(
         and tuple(int(part) for part in item["python_version"].split(".")[:2])
         >= (3, 11)
         and item["notebook_version"].split(".", 1)[0] == "7"
-        and item["packages_checked"] >= 7,
+        and item["packages_checked"] >= 8,
         "A": lambda item: item["value_types"] == ["str", "float", "bool"]
         and item["second_dish"] == "미트볼로제파스타"
         and item["school_name"] == "남악고등학교"
