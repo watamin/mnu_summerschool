@@ -14,12 +14,14 @@ for import_root in (PROJECT_ROOT, SRC_ROOT):
 
 from neis_meal_ai.mokpo_data import load_mokpo_dataset, load_validation_menus  # noqa: E402
 from neis_meal_ai.mokpo_ui import create_mokpo_app  # noqa: E402
+from neis_meal_ai.nim_chat import NvidiaNimClient  # noqa: E402
 from neis_meal_ai.text_vectors import SentenceTransformerEmbedder  # noqa: E402
 
 
 SCHOOL_PATH = PROJECT_ROOT / "data" / "mokpo_schools.json"
 MEAL_PATH = PROJECT_ROOT / "data" / "mokpo_meals_live.json"
 MNU_PATH = PROJECT_ROOT / "data" / "mnu_cafeteria_2026_07_30_31.json"
+NIM_KEY_PATH = PROJECT_ROOT.parent / "nvidia_nim.txt"
 
 
 def create_service_app():
@@ -29,6 +31,7 @@ def create_service_app():
         dataset,
         validation_menus,
         embedder=SentenceTransformerEmbedder(),
+        nim_client=NvidiaNimClient(key_path=NIM_KEY_PATH),
     )
 
 

@@ -23,6 +23,7 @@ from neis_meal_ai.mokpo_ui import (
     register_mnu_predictions_callback,
     sample_foods_callback,
     school_analysis_callback,
+    school_value_analysis_callback,
 )
 from neis_meal_ai.mokpo_analytics import feedback_to_csv
 
@@ -406,28 +407,59 @@ def test_school_analysis_callback_returns_stats_signatures_and_ranking() -> None
     assert not ranking.empty
 
 
-def test_mokpo_app_contains_feedback_centered_four_tab_service() -> None:
+def test_school_value_analysis_shows_real_formula_inputs_and_rankings() -> None:
+    dataset, _ = _data()
+    school = dataset.meals["school_name"].iloc[0]
+
+    message, stats, frequencies, values, overall, ranking = (
+        school_value_analysis_callback(
+            dataset,
+            school_name=school,
+            preference_text="파스타 돈까스 치즈",
+            method="tfidf",
+        )
+    )
+
+    assert school in message
+    assert all(term in message for term in ("TF =", "IDF =", "데이터 가치 점수"))
+    assert stats.iloc[0]["학교"] == school
+    assert not frequencies.empty
+    assert not values.empty
+    assert not overall.empty
+    assert not ranking.empty
+    assert values.iloc[0]["순위"] == 1
+
+
+def test_mokpo_app_contains_food_value_matrix_map_and_nim_service() -> None:
     dataset, validation = _data()
-    demo = create_mokpo_app(dataset, validation)
+    demo = create_mokpo_app(dataset, validation, nim_client=RecordingNimClient())
     config = json.dumps(demo.get_config_file(), ensure_ascii=False, default=str)
 
     assert isinstance(demo, gr.Blocks)
     for text in (
         "목포 급식 AI 탐험실",
         "학생 설문·개인 결과",
+        "30개 음식 역행렬 추천",
         "모둠 피드백 분석",
-        "학교 급식 지도",
+        "학교별 가치 음식",
         "AI 식단 실험실",
+        "NVIDIA NIM 데이터 해설",
         "31개교",
         "674",
         "실제 식단일 20260624~20260729",
-        "실제 이름",
+        "음식 30개 뽑기",
+        "역행렬 추천 계산",
+        "TF-IDF 데이터 가치 점수",
+        "음식 유사도 2차원 지도",
+        "대화 지우기",
         "6명 이하의 작은 표본",
         "콘텐츠 기반 추천",
         "유저 기반 추천",
         "수업용 대체지표",
     ):
         assert text in config
+    assert "학생은 코드를 작성하지 않고 익명 설문" not in config
+    assert "실제 이름·학번·반·연락처·질병명" not in config
 
 
 def test_app_excludes_catalog_schools_without_meal_rows() -> None:
@@ -476,11 +508,13 @@ def test_mokpo_service_reuses_one_lazy_embedding_model(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_create_app(_dataset, _validation, *, embedder):
+    def fake_create_app(_dataset, _validation, *, embedder, nim_client):
         captured["embedder"] = embedder
+        captured["nim_client"] = nim_client
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
 
     assert mokpo_service.create_service_app() == "app"
     assert captured["embedder"].__class__.__name__ == "SentenceTransformerEmbedder"
+    assert captured["nim_client"].__class__.__name__ == "NvidiaNimClient"

@@ -704,6 +704,50 @@ def school_analysis_callback(
     return f"### 학교 급식 비교\n{notice}", selected_stats, signatures, ranking
 
 
+def school_value_analysis_callback(
+    dataset: MokpoDataset,
+    *,
+    school_name: str,
+    preference_text: str,
+    method: str,
+    embedder: TextEmbedder | None = None,
+) -> tuple[
+    str,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
+    """선택 학교의 빈도·TF-IDF 가치와 고교 추천 순위를 함께 계산한다."""
+
+    stats = school_statistics(dataset.meals)
+    selected_stats = stats.loc[stats["학교"] == str(school_name)].reset_index(
+        drop=True
+    )
+    frequencies = school_food_frequencies(
+        dataset.meals, str(school_name), top_n=15
+    )
+    values = school_food_values(dataset.meals, str(school_name), top_n=20)
+    overall = school_food_values(dataset.meals).sort_values(
+        ["데이터 가치 점수", "등장 횟수", "학교", "음식"],
+        ascending=[False, False, True, True],
+    ).head(30).reset_index(drop=True)
+    ranking, notice = recommend_high_schools(
+        dataset.meals,
+        str(preference_text or ""),
+        method=str(method),
+        embedder=embedder,
+    )
+    message = (
+        f"{school_food_value_explanation(values)}\n\n"
+        "값이 크다는 것은 영양가나 맛이 절대적으로 더 좋다는 뜻이 아니라, "
+        "이 수집 자료에서 해당 학교를 설명하는 데 유용하다는 뜻입니다.\n\n"
+        f"**학교 취향 비교:** {notice}"
+    )
+    return message, selected_stats, frequencies, values, overall, ranking
+
+
 def food_mbti_callback(
     rice_vs_noodle: int,
     mild_vs_spicy: int,
@@ -766,8 +810,9 @@ def create_mokpo_app(
     validation_menus: pd.DataFrame,
     *,
     embedder: TextEmbedder | None = None,
+    nim_client: NvidiaNimClient | None = None,
 ):
-    """피드백 수집과 분석 중심의 완성형 네 탭 Gradio 앱을 만든다."""
+    """학교 음식 가치·추천·피드백 분석을 묶은 완성형 Gradio 앱을 만든다."""
 
     import gradio as gr
 
@@ -796,12 +841,14 @@ def create_mokpo_app(
     with gr.Blocks(title="목포 급식 AI 탐험실") as demo:
         feedback_state = gr.State([])
         prediction_state = gr.State([])
+        survey_seed_state = gr.State(0)
+        survey_foods_state = gr.State([])
+        matrix_state = gr.State(None)
         gr.Markdown(
             "# 🍱 목포 급식 AI 탐험실\n"
             f"**사용 데이터:** {source_text}\n\n"
-            "학생은 코드를 작성하지 않고 익명 설문과 예측·실제 리뷰 차이를 분석합니다. "
-            "실제 이름·학번·반·연락처·질병명은 입력하지 않습니다. 응답은 현재 브라우저 "
-            "세션에만 두며 내려받기를 선택할 때만 익명 CSV를 만듭니다.\n\n"
+            "실제 학교 식단에서 자주 나온 음식과 학교를 잘 구별하는 음식, 개인 취향에 "
+            "가까운 음식을 서로 다른 AI 방법으로 비교합니다.\n\n"
             "콘텐츠 기반 추천은 취향과 메뉴 글을 비교하고, 유저 기반 추천은 다른 익명 "
             "학생의 실제 리뷰를 비교합니다. 6명 이하의 작은 표본이므로 결과를 전체 학생에게 "
             "일반화하지 않습니다."
@@ -866,6 +913,44 @@ def create_mokpo_app(
             add_message = gr.Markdown()
             feedback_table = gr.Dataframe(label="현재 모둠 익명 응답", interactive=False)
 
+        with gr.Tab("30개 음식 역행렬 추천"):
+            gr.Markdown(
+                "## 학교 식단에서 뽑은 음식 30개를 평가해 보기\n"
+                "각 음식의 평점을 1점(매우 싫음)부터 5점(매우 좋음)까지 바꾸면, "
+                "아직 평가하지 않은 음식의 점수를 정규화 의사역행렬로 계산합니다.\n\n"
+                "$$G = XX^T + 0.1I, \\quad "
+                "w = X^T\\operatorname{pinv}(G)(y-3), \\quad "
+                "\\hat y = \\operatorname{clip}(3 + X_{all}w, 1, 5)$$"
+            )
+            matrix_school = gr.Dropdown(
+                schools, value=schools[0], label="평가할 학교"
+            )
+            with gr.Row():
+                sample_button = gr.Button("음식 30개 뽑기", variant="primary")
+                resample_button = gr.Button("다른 음식 다시 뽑기")
+            sample_message = gr.Markdown()
+            rating_table = gr.Dataframe(
+                headers=["음식", "평점"],
+                datatype=["str", "number"],
+                value=pd.DataFrame(columns=["음식", "평점"]),
+                label="30개 음식 평점표",
+                interactive=True,
+            )
+            matrix_button = gr.Button("역행렬 추천 계산", variant="primary")
+            matrix_message = gr.Markdown()
+            with gr.Row():
+                matrix_best = gr.Dataframe(label="미평가 음식 예상 Best", interactive=False)
+                matrix_worst = gr.Dataframe(label="미평가 음식 예상 Worst", interactive=False)
+            gr.Markdown(
+                "### 음식 유사도 2차원 지도\n"
+                "글자 N-그램 TF-IDF 벡터를 PCA 두 축으로 줄였습니다. 가까운 점은 이름에 "
+                "비슷한 글자 조각이 많다는 뜻이며, 인과관계나 영양학적 유사성을 뜻하지는 않습니다."
+            )
+            food_map_plot = gr.Plot(label="음식 유사도 2차원 지도")
+            food_map_table = gr.Dataframe(
+                label="지도 번호와 음식 이름", interactive=False
+            )
+
         with gr.Tab("모둠 피드백 분석"):
             gr.Markdown(
                 "## 콘텐츠 기반·유저 기반·혼합 추천 검증\n"
@@ -898,9 +983,17 @@ def create_mokpo_app(
             mbti_button = gr.Button("Food MBTI 확인")
             mbti_result = gr.Markdown()
 
-        with gr.Tab("학교 급식 지도"):
+        with gr.Tab("학교별 가치 음식"):
+            gr.Markdown(
+                "## 자주 나온 핵심 음식과 TF-IDF 데이터 가치 음식\n"
+                "가장 자주 나온 음식은 **횟수**만 봅니다. 반면 데이터 가치 점수는 한 학교에서 "
+                "자주 나오면서 다른 학교에는 덜 흔한 음식을 찾습니다.\n\n"
+                "$$TF = \\frac{해당\\ 음식\\ 등장\\ 횟수}{학교\\ 전체\\ 음식\\ 수}$$\n"
+                "$$IDF = \\ln\\left(\\frac{1+전체\\ 학교\\ 수}{1+해당\\ 음식이\\ 나온\\ 학교\\ 수}\\right)+1$$\n"
+                "$$TF\text{-}IDF\\ 데이터\\ 가치\\ 점수 = TF \\times IDF$$"
+            )
             school_map = gr.Dropdown(
-                high_schools, value=high_schools[0], label="비교할 고등학교"
+                schools, value=schools[0], label="분석할 학교"
             )
             school_preference = gr.Textbox(
                 label="급식 취향 문장", value="파스타 돈까스 치즈"
@@ -910,12 +1003,23 @@ def create_mokpo_app(
                 value="tfidf",
                 label="분석 방식",
             )
-            school_button = gr.Button("학교 통계와 급식 취향 순위 보기")
+            school_button = gr.Button("학교 핵심·가치 음식 계산", variant="primary")
             school_message = gr.Markdown()
             school_stats = gr.Dataframe(label="학교 통계", interactive=False)
             with gr.Row():
-                signature_table = gr.Dataframe(label="시그니처 메뉴", interactive=False)
-                high_rank_table = gr.Dataframe(label="급식 취향 기준 고등학교", interactive=False)
+                frequency_table = gr.Dataframe(
+                    label="가장 자주 나온 핵심 메뉴", interactive=False
+                )
+                value_table = gr.Dataframe(
+                    label="TF-IDF 데이터 가치 점수 상세", interactive=False
+                )
+            with gr.Row():
+                overall_value_table = gr.Dataframe(
+                    label="전체 학교 TF-IDF 가치 순위", interactive=False
+                )
+                high_rank_table = gr.Dataframe(
+                    label="급식 취향 기준 고등학교", interactive=False
+                )
 
         with gr.Tab("AI 식단 실험실"):
             gr.Markdown(
@@ -938,6 +1042,25 @@ def create_mokpo_app(
             with gr.Row():
                 pareto_table = gr.Dataframe(label="Pareto 후보", interactive=False)
                 pair_table = gr.Dataframe(label="메뉴 조합 탐색", interactive=False)
+
+        with gr.Tab("NVIDIA NIM 데이터 해설"):
+            gr.Markdown(
+                "## 계산 결과에 질문하기\n"
+                "선택한 학교의 실제 통계·TF-IDF 값과 방금 계산한 역행렬 추천 결과를 "
+                "근거로 설명합니다. 답변은 계산을 대신하는 새 예측이 아니라 결과를 읽는 "
+                "도우미입니다. 질문과 아래 계산 근거는 NVIDIA NIM API로 전송됩니다."
+            )
+            chat_school = gr.Dropdown(
+                schools, value=schools[0], label="질문할 학교"
+            )
+            chat_history = gr.Chatbot(label="NVIDIA NIM 급식 데이터 해설")
+            chat_question = gr.Textbox(
+                label="질문",
+                placeholder="예: 이 학교의 데이터 가치 1위 음식은 왜 1위인가요?",
+            )
+            with gr.Row():
+                chat_button = gr.Button("데이터 근거로 답하기", variant="primary")
+                chat_clear_button = gr.Button("대화 지우기")
 
         personal_button.click(
             lambda school_name, likes_text, avoids_text, types, spice_value, method_value: personal_recommendation_callback(
@@ -979,6 +1102,40 @@ def create_mokpo_app(
             ],
             outputs=[prediction_state, mnu_prediction_message, mnu_prediction_table],
             api_name="register_mnu_prediction",
+        )
+        for trigger in (sample_button, resample_button):
+            trigger.click(
+                lambda school_name, seed: sample_foods_callback(
+                    dataset, school_name=school_name, seed=seed
+                ),
+                inputs=[matrix_school, survey_seed_state],
+                outputs=[
+                    survey_seed_state,
+                    survey_foods_state,
+                    sample_message,
+                    rating_table,
+                ],
+                api_name=(
+                    "sample_school_foods" if trigger is sample_button else False
+                ),
+            )
+        matrix_button.click(
+            lambda school_name, sampled_foods, ratings: matrix_recommendation_callback(
+                dataset,
+                school_name=school_name,
+                sampled_foods=sampled_foods,
+                ratings=ratings,
+            ),
+            inputs=[matrix_school, survey_foods_state, rating_table],
+            outputs=[
+                matrix_message,
+                matrix_best,
+                matrix_worst,
+                food_map_plot,
+                food_map_table,
+                matrix_state,
+            ],
+            api_name="matrix_recommendation",
         )
         add_button.click(
             lambda state, predictions, code, grade_value, selected_menu, likes_value, avoids_value, types, spice_value, rating, tag, method_value: add_feedback_callback(
@@ -1054,7 +1211,7 @@ def create_mokpo_app(
             api_name="food_mbti",
         )
         school_button.click(
-            lambda school_name, preference, method_value: school_analysis_callback(
+            lambda school_name, preference, method_value: school_value_analysis_callback(
                 dataset,
                 school_name=school_name,
                 preference_text=preference,
@@ -1062,8 +1219,15 @@ def create_mokpo_app(
                 embedder=embedder,
             ),
             inputs=[school_map, school_preference, school_method],
-            outputs=[school_message, school_stats, signature_table, high_rank_table],
-            api_name="school_analysis",
+            outputs=[
+                school_message,
+                school_stats,
+                frequency_table,
+                value_table,
+                overall_value_table,
+                high_rank_table,
+            ],
+            api_name="school_food_values",
         )
         lab_button.click(
             lambda school_name, preferences, method_value: lab_callback(
@@ -1076,6 +1240,24 @@ def create_mokpo_app(
             inputs=[lab_school, group_preferences, lab_method],
             outputs=[lab_message, pareto_table, pair_table],
             api_name="meal_lab",
+        )
+        chat_button.click(
+            lambda school_name, question, history, current_matrix: meal_chat_callback(
+                dataset,
+                school_name=school_name,
+                question=question,
+                history=history,
+                nim_client=nim_client,
+                matrix_state=current_matrix,
+            ),
+            inputs=[chat_school, chat_question, chat_history, matrix_state],
+            outputs=[chat_history, chat_question],
+            api_name="nim_meal_chat",
+        )
+        chat_clear_button.click(
+            lambda: ([], ""),
+            outputs=[chat_history, chat_question],
+            api_name=False,
         )
         gr.Markdown(
             "---\n추천 결과는 분석 실습용입니다. 실제 급식·알레르기·영양 판단은 "
