@@ -324,6 +324,7 @@ def global_food_value_explanation(values: pd.DataFrame) -> str:
     """전역 1위 음식에 실제 수를 대입한 Markdown 계산식을 만든다."""
 
     required = {
+        "전체 순위",
         "음식",
         "전체 등장 횟수",
         "전체 음식 수",

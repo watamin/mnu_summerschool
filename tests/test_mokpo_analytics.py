@@ -295,6 +295,25 @@ def test_global_food_value_explanation_uses_the_global_winner_numbers() -> None:
     assert "가학교에서 3회" in message
 
 
+def test_global_food_value_explanation_rejects_a_table_without_rank() -> None:
+    malformed = pd.DataFrame(
+        [
+            {
+                "음식": "배추김치",
+                "전체 등장 횟수": 4,
+                "전체 음식 수": 9,
+                "등장 학교 수": 2,
+                "전체 학교 수": 3,
+                "가장 많이 나온 학교": "가학교",
+                "해당 학교 횟수": 3,
+            }
+        ]
+    )
+
+    with pytest.raises(ValueError, match="전체 음식 가치"):
+        global_food_value_explanation(malformed)
+
+
 def test_school_food_value_explanation_substitutes_real_numbers() -> None:
     values = school_food_values(_meal_frame(), "목포가람고등학교")
 

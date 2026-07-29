@@ -52,4 +52,3 @@
 - [ ] Update the two operating documents with the global formula and interpretation.
 - [ ] Run the full suite, local HTTP smoke, and secret scans.
 - [ ] Commit and push the existing PR branch.
-
