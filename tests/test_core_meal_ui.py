@@ -8,10 +8,10 @@ import gradio as gr
 import pandas as pd
 import pytest
 
-from neis_meal_ai.core_meal_ui import (
+from neis_meal_ai.core_meal_ui import create_mokpo_app
+from neis_meal_ai.lunch_prediction import (
     compare_actual_callback,
     compare_actual_ui_callback,
-    create_mokpo_app,
     predict_profile_callback,
 )
 from neis_meal_ai.mokpo_data import load_validation_menus
@@ -178,3 +178,11 @@ def test_app_contains_only_the_three_step_experiment(tmp_path: Path) -> None:
         if component["props"].get("label") == "내 음식 30개 평가표"
     )
     assert profile_table_props["static_columns"] == [0, 1, 2]
+
+    name_props = next(
+        component["props"]
+        for component in config_file["components"]
+        if component["props"].get("label") == "이름"
+    )
+    assert name_props["interactive"] is False
+    assert name_props["placeholder"] == "로그인한 이름을 사용합니다"

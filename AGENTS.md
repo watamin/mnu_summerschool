@@ -33,16 +33,16 @@ Korean-language meal-data teaching project and Gradio service for Mokpo-area sch
 | Compact recommendations | `recommender.py`, `service.py`, `ui.py` | matching module tests |
 | Mokpo data and food value | `mokpo_data.py`, `mokpo_analytics.py` | `test_mokpo_data.py`, `test_mokpo_analytics.py` |
 | Student profiles and factorization | `student_profiles.py`, `matrix_factorization.py`, `student_profile_ui.py` | matching profile/model tests |
-| Core Gradio service | `core_meal_ui.py`, `mokpo_service.py` | `test_core_meal_ui.py`, `test_mokpo_service.py` |
+| Core Gradio service | `lunch_prediction.py`, `core_meal_ui.py`, `mokpo_service.py` | `test_core_meal_ui.py`, `test_mokpo_service.py` |
 | Legacy extended analytics UI | `mokpo_ui.py` | `test_mokpo_ui.py` |
 | Textbook and Colab content | `scripts/build_*.py` | notebook/textbook tests and verifiers |
 
 ## Code Map
 
 - Compact path: `neis.py` fetches rows -> `cleaning.py` shapes meals -> `recommender.py` scores -> `service.py` applies live/fallback policy -> `ui.py` presents results.
-- Mokpo path: `mokpo_data.py` validates snapshots -> `student_profiles.py` restores 30 ratings -> `core_meal_ui.py` predicts the selected lunch and compares the actual rating.
+- Mokpo path: `mokpo_data.py` validates snapshots -> `student_profiles.py` restores 30 ratings -> `lunch_prediction.py` scores the selected lunch -> `core_meal_ui.py` presents the comparison.
 - Profile path: `StudentProfileStore` persists ratings -> `matrix_factorization.py` predicts blanks -> `student_profile_ui.py` adapts callbacks.
-- App wiring: `mokpo_service.py:create_service_app()` owns dataset, profile store, embedder, NIM client, authentication, and launch mode.
+- App wiring: `mokpo_service.py:create_service_app()` owns the dataset, profile store, authenticated LAN mode, and local launch mode.
 - Textbook path: builder writes ordered chapters -> freezer executes and stores outputs -> verifier reruns every chapter in a fresh kernel.
 
 ## Commands

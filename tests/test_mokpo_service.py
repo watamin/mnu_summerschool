@@ -139,6 +139,28 @@ def test_real_gradio_login_protects_api_and_loads_named_student_profile(
             verbose=False,
         )
         profile_message, profile_table = client.predict(
+            "무시되어야할이름", api_name="/load_student_survey"
+        )
+        rated_table = dict(profile_table)
+        rated_table["data"] = [
+            [*row[:3], 4] for row in profile_table["data"]
+        ]
+        save_message, _ = client.predict(
+            "무시되어야할이름",
+            rated_table,
+            api_name="/save_student_survey",
+        )
+        prediction_message, _ = client.predict(
+            "무시되어야할이름",
+            "mnu-2026-07-30-lunch",
+            api_name="/predict_today_lunch",
+        )
+        other_client = Client(
+            base_url,
+            auth=("다른학생", password),
+            verbose=False,
+        )
+        other_message, _ = other_client.predict(
             "학생통합", api_name="/load_student_survey"
         )
 
@@ -146,7 +168,12 @@ def test_real_gradio_login_protects_api_and_loads_named_student_profile(
         assert wrong_login.status_code == 400
         assert wrong_login.json()["detail"] == "Incorrect credentials."
         assert "학생통합" in profile_message
+        assert "무시되어야할이름" not in profile_message
         assert "0/30" in profile_message
         assert len(profile_table["data"]) == 30
+        assert "30/30" in save_message
+        assert "학생통합 학생 예상" in prediction_message
+        assert "다른학생" in other_message
+        assert "0/30" in other_message
     finally:
         app.close()

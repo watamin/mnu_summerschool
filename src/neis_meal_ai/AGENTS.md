@@ -9,7 +9,7 @@
 | Mokpo analytics | `mokpo_analytics.py` | Food value, maps, collaborative prediction, feedback, evaluation |
 | Profiles | `student_profiles.py`, `matrix_factorization.py`, `student_profile_ui.py` | SQLite ratings, factorization/evaluation, profile UI callbacks |
 | Integrations | `text_vectors.py`, `nim_chat.py` | Injectable embeddings and grounded NVIDIA NIM chat |
-| Core composition | `core_meal_ui.py` | Three-step rating, lunch prediction, and actual-comparison screen |
+| Lunch experiment | `lunch_prediction.py`, `core_meal_ui.py` | Rating-based prediction logic and the three-step screen |
 | Extended composition | `mokpo_ui.py` | Legacy analytics callbacks and tabbed exploratory screen |
 
 ## Dependency Direction
@@ -17,7 +17,7 @@
 - `neis.py` and `mokpo_data.py` are external-data boundaries; validate before returning domain data.
 - `cleaning.py`, `recommender.py`, `text_vectors.py`, and `matrix_factorization.py` must not depend on Gradio.
 - `service.py` shapes compact UI results but delegates scoring to `recommender.py`.
-- `core_meal_ui.py` may compose profile and text-vector modules; those modules must not import it.
+- `lunch_prediction.py` owns the deterministic score and comparison; `core_meal_ui.py` owns Gradio composition.
 - `mokpo_ui.py` retains the extended analytics callbacks but is not the primary `mokpo_service.py` surface.
 - Keep NIM/model initialization lazy. Importing the package or building offline tests must not trigger downloads or network calls.
 
