@@ -38,7 +38,7 @@ def freeze_notebook_outputs(
     *,
     timeout: int = 180,
 ) -> list[dict[str, object]]:
-    """10개 노트북을 검증한 뒤 실행 번호와 출력을 원본에 기록한다."""
+    """모든 교재 노트북을 검증한 뒤 실행 번호와 출력을 원본에 기록한다."""
 
     target_dir = Path(chapter_dir).resolve()
     project_root = target_dir.parents[1]

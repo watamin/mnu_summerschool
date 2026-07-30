@@ -1,4 +1,6 @@
-"""Jupyter 교과서 9개 장과 부록을 각각 새 커널에서 실행해 검증한다."""
+"""Jupyter 교과서 본문과 부록을 각각 새 커널에서 실행해 검증한다."""
+
+# noqa: SIZE_OK - 장별 결과 계약표와 새 커널 실행 검증은 하나의 검증 경계다.
 
 from __future__ import annotations
 
@@ -41,6 +43,23 @@ REQUIRED_RESULT_KEYS = {
     },
     "01": {"source", "raw_rows", "first_keys"},
     "02": {"clean_rows", "columns", "chart_ready"},
+    "B": {
+        "training_rows",
+        "feature_name",
+        "target_name",
+        "labels",
+        "selected_food",
+        "one_hot",
+        "decoded_food",
+        "ones_count",
+        "learned_weights",
+        "predicted_rating",
+        "actual_rating",
+        "absolute_error",
+        "multi_hot",
+        "multi_hot_ones",
+        "tutorial_steps",
+    },
     "03": {
         "cross_document_comparison",
         "document_summaries",
@@ -146,6 +165,23 @@ def _validate_chapter_result(
         "02": lambda item: item["clean_rows"] >= 1
         and bool(item["columns"])
         and item["chart_ready"] is True,
+        "B": lambda item: item["training_rows"] == 8
+        and item["feature_name"] == "menu"
+        and item["target_name"] == "rating"
+        and item["labels"] == ["밥", "국", "김치", "돈까스"]
+        and item["selected_food"] == "김치"
+        and item["one_hot"] == [0, 0, 1, 0]
+        and item["decoded_food"] == item["selected_food"]
+        and item["ones_count"] == item["one_hot"].count(1) == 1
+        and item["learned_weights"] == [4.5, 3.5, 5.0, 4.0]
+        and item["predicted_rating"] == 5.0
+        and item["actual_rating"] == 4.0
+        and item["absolute_error"]
+        == abs(item["actual_rating"] - item["predicted_rating"])
+        == 1.0
+        and item["multi_hot"] == [1, 0, 1, 1]
+        and item["multi_hot_ones"] == item["multi_hot"].count(1) == 3
+        and item["tutorial_steps"] == 6,
         "03": lambda item: bool(item["similarities"])
         and bool(item["query"])
         and len(item["document_summaries"]) == 3
@@ -184,7 +220,7 @@ def verify_textbook(
     timeout: int = 180,
     executed_dir: str | Path = DEFAULT_EXECUTED_DIR,
 ) -> list[dict[str, Any]]:
-    """9개 장과 부록을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
+    """교과서의 모든 장을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
 
     _configure_notebook_event_loop()
     try:
@@ -217,7 +253,8 @@ def verify_textbook(
     missing = [path.name for path in paths if not path.is_file()]
     if missing:
         raise RuntimeError(
-            f"Jupyter 교과서 9개 장과 부록이 모두 필요합니다. 없는 파일: {', '.join(missing)}"
+            f"Jupyter 교과서 파일 {len(CHAPTER_FILES)}개가 모두 필요합니다. "
+            f"없는 파일: {', '.join(missing)}"
         )
 
     output_dir = Path(executed_dir)

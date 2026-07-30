@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# noqa: SIZE_OK - 생성 교과서 전체의 편집·실행 계약을 한 파일에서 대조한다.
+
 import json
 import os
 import subprocess
@@ -18,6 +20,7 @@ EXPECTED_CHAPTERS = (
     "A_JSON_기초_튜토리얼.ipynb",
     "01_NEIS_API_요청하기.ipynb",
     "02_급식데이터_정리와_그래프.ipynb",
+    "B_원핫_벡터_기초_튜토리얼.ipynb",
     "03_TFIDF_글자를_숫자로.ipynb",
     "04_유사도와_식단군집.ipynb",
     "05_개인추천_점수설계.ipynb",
@@ -81,6 +84,23 @@ EXPECTED_RESULT_KEYS = {
         "tutorial_steps",
     },
     "02": {"clean_rows", "columns", "chart_ready"},
+    "B": {
+        "training_rows",
+        "feature_name",
+        "target_name",
+        "labels",
+        "selected_food",
+        "one_hot",
+        "decoded_food",
+        "ones_count",
+        "learned_weights",
+        "predicted_rating",
+        "actual_rating",
+        "absolute_error",
+        "multi_hot",
+        "multi_hot_ones",
+        "tutorial_steps",
+    },
     "03": {
         "similarities",
         "query",
@@ -145,7 +165,7 @@ def _execute_code_cells(path: Path) -> dict:
     return namespace
 
 
-def test_build_textbook_creates_ten_jupyter_notebooks(tmp_path: Path) -> None:
+def test_build_textbook_creates_eleven_jupyter_notebooks(tmp_path: Path) -> None:
     paths = build_textbook(tmp_path)
 
     assert CHAPTER_FILES == EXPECTED_CHAPTERS
@@ -320,7 +340,7 @@ def test_personalization_inquiries_change_only_one_condition(
 
 @pytest.mark.parametrize(
     "chapter",
-    ["00", "A", *[f"{number:02d}" for number in range(1, 9)]],
+    ["00", "A", "B", *[f"{number:02d}" for number in range(1, 9)]],
 )
 def test_chapter_executes_independently_with_expected_result(
     tmp_path: Path,
@@ -358,6 +378,21 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     assert "SD_SCHUL_CODE=7140272" in results["01"]["prepared_request_url"]
     assert results["01"]["live_request_sent"] is False
     assert results["02"]["clean_rows"] == 5
+    assert results["B"]["training_rows"] == 8
+    assert results["B"]["feature_name"] == "menu"
+    assert results["B"]["target_name"] == "rating"
+    assert results["B"]["labels"] == ["밥", "국", "김치", "돈까스"]
+    assert results["B"]["selected_food"] == "김치"
+    assert results["B"]["one_hot"] == [0, 0, 1, 0]
+    assert results["B"]["decoded_food"] == "김치"
+    assert results["B"]["ones_count"] == 1
+    assert results["B"]["learned_weights"] == [4.5, 3.5, 5.0, 4.0]
+    assert results["B"]["predicted_rating"] == 5.0
+    assert results["B"]["actual_rating"] == 4.0
+    assert results["B"]["absolute_error"] == 1.0
+    assert results["B"]["multi_hot"] == [1, 0, 1, 1]
+    assert results["B"]["multi_hot_ones"] == 3
+    assert results["B"]["tutorial_steps"] == 6
     assert len(results["03"]["similarities"]) == 5
     assert results["03"]["two_grams"] == ["·파", "파스", "스타", "타·"]
     assert results["03"]["rare_idf"] > results["03"]["common_idf"]
@@ -382,6 +417,51 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     assert results["07"]["model_card_complete"] is True
     assert results["08"]["presentation_sections"] == 8
     assert results["08"]["demo_checklist_ready"] is True
+
+
+def test_machine_learning_appendix_runs_from_features_to_error(
+    tmp_path: Path,
+) -> None:
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("B")
+    )
+    notebook = _read_notebook(chapter_path)
+    source = _source(notebook)
+    activity_cells = [
+        cell
+        for cell in notebook["cells"]
+        if cell["metadata"].get("textbook_role") == "activity"
+    ]
+
+    assert len(activity_cells) == 6
+    assert all(
+        term in source
+        for term in (
+            "특성(X)",
+            "정답(y)",
+            "원-핫 벡터",
+            "학습",
+            "예측",
+            "절대오차",
+            "멀티-핫",
+            "TF-IDF",
+        )
+    )
+
+    result = _execute_code_cells(chapter_path)["chapter_result"]
+    assert result["one_hot"].count(1) == 1
+    assert result["decoded_food"] == result["selected_food"]
+    assert result["predicted_rating"] == sum(
+        value * weight
+        for value, weight in zip(
+            result["one_hot"],
+            result["learned_weights"],
+        )
+    )
+    assert result["absolute_error"] == abs(
+        result["actual_rating"] - result["predicted_rating"]
+    )
+    assert result["multi_hot"].count(1) == 3
 
 
 def test_tfidf_chapter_traces_each_document_and_score_step_by_step(
@@ -563,16 +643,24 @@ def test_cluster_and_widget_chapters_split_code_and_explain_line_groups() -> Non
     assert "버튼 콜백 연결과 화면 조립" in widget_source
 
 
-def test_jupyter_guides_exist_without_role_or_score_tables() -> None:
+def test_jupyter_guides_use_concept_sequence_without_fixed_class_schedule() -> None:
     guide_paths = [
+        PROJECT_ROOT / "README.md",
         PROJECT_ROOT / "jupyter_course" / "README.md",
         PROJECT_ROOT / "jupyter_course" / "교사용_운영안.md",
+        PROJECT_ROOT / "docs" / "교사용_운영체크리스트.md",
     ]
+    fixed_schedule_phrases = (
+        "여섯 번의 수업",
+        "분 단위 진행",
+        "중학생용",
+        "중학생을 위한",
+        "중학교 2학년",
+        *(f"## {number}회차" for number in range(1, 7)),
+    )
 
     for path in guide_paths:
         source = path.read_text(encoding="utf-8")
         assert not any(phrase in source for phrase in BANNED_STUDENT_PHRASES)
-    teacher_guide = guide_paths[1].read_text(encoding="utf-8")
-    assert sum(
-        f"## {number}회차" in teacher_guide for number in range(1, 7)
-    ) == 6
+        assert not any(phrase in source for phrase in fixed_schedule_phrases)
+    assert not (PROJECT_ROOT / "docs" / "15시간_수업지도안.md").exists()

@@ -1,10 +1,17 @@
-"""중학생용 NEIS 급식 AI Jupyter 교과서 9개 장과 부록을 생성한다."""
+"""NEIS 급식 AI Jupyter 교재 본문과 기초 부록을 생성한다."""
+
+# noqa: SIZE_OK - 이 파일의 대부분은 생성할 노트북의 수업 본문 데이터다.
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Callable
+
+if __package__:
+    from .machine_learning_foundations import MACHINE_LEARNING_LESSON
+else:
+    from machine_learning_foundations import MACHINE_LEARNING_LESSON
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +21,7 @@ CHAPTER_FILES = (
     "A_JSON_기초_튜토리얼.ipynb",
     "01_NEIS_API_요청하기.ipynb",
     "02_급식데이터_정리와_그래프.ipynb",
+    "B_원핫_벡터_기초_튜토리얼.ipynb",
     "03_TFIDF_글자를_숫자로.ipynb",
     "04_유사도와_식단군집.ipynb",
     "05_개인추천_점수설계.ipynb",
@@ -57,8 +65,6 @@ def _lesson(
     number: str,
     title: str,
     question: str,
-    session: str,
-    minutes: int,
     objectives: list[str],
     connection: str,
     keywords: list[tuple[str, str]],
@@ -83,9 +89,9 @@ def _lesson(
             f"""
 # {chapter_label}. {title}
 
-| 오늘의 질문 | 예상 시간 |
-|---|---:|
-| {question} | {session} · 약 {minutes}분 |
+| 학습 질문 |
+|---|
+| {question} |
 """
             ,
             role="chapter-opener",
@@ -194,8 +200,6 @@ print("__CHAPTER_RESULT__=" + json.dumps(chapter_result, ensure_ascii=False))
             "language_info": {"name": "python", "version": "3.11"},
             "jupyter_course": {
                 "chapter": number,
-                "session": session,
-                "estimated_minutes": minutes,
             },
         },
         "nbformat": 4,
@@ -239,8 +243,6 @@ def _chapter_00() -> dict:
         number="00",
         title="설치 확인과 Jupyter 시작하기",
         question="가상환경과 Jupyter가 제대로 준비되었는지 어떻게 확인할까?",
-        session="1회차 전반",
-        minutes=70,
         objectives=[
             "가상환경이 필요한 까닭을 설명할 수 있다.",
             "requirements의 패키지를 설치하고 Jupyter를 실행하는 명령 순서를 말할 수 있다.",
@@ -388,8 +390,6 @@ def _appendix_json() -> dict:
         number="A",
         title="JSON 기초 튜토리얼",
         question="작은 급식 정보가 어떻게 JSON 자료로 자랄까?",
-        session="1회차 중반",
-        minutes=55,
         objectives=[
             "글자·숫자·참과 거짓의 자료형을 화면에서 확인할 수 있다.",
             "목록에서는 위치 번호로, 사전에서는 이름표로 값을 찾을 수 있다.",
@@ -666,8 +666,6 @@ def _chapter_01() -> dict:
         number="01",
         title="NEIS API 요청하기",
         question="우리 학교 급식을 공식 서버에 어떻게 요청할까?",
-        session="1회차 후반",
-        minutes=55,
         objectives=[
             "API의 요청과 응답을 식당 주문에 비유해 설명할 수 있다.",
             "요청 주소와 조건을 확인한 뒤 NEIS API에 GET 요청을 보낼 수 있다.",
@@ -888,8 +886,6 @@ def _chapter_02() -> dict:
         number="02",
         title="급식 데이터 정리와 그래프",
         question="복잡한 메뉴 글자를 어떻게 표로 바꿀까?",
-        session="2회차",
-        minutes=180,
         objectives=[
             "HTML 줄바꿈과 알레르기 번호를 메뉴명에서 분리할 수 있다.",
             "열량과 영양 문자열을 숫자 열로 바꾸는 이유를 설명할 수 있다.",
@@ -1019,13 +1015,15 @@ print("값:", highest_row[graph_column])
     )
 
 
+def _appendix_one_hot() -> dict:  # noqa: DICT_OK - 기존 노트북 JSON 생성 계약
+    return _lesson(**MACHINE_LEARNING_LESSON)
+
+
 def _chapter_03() -> dict:
     return _lesson(
         number="03",
         title="TF-IDF — 글자를 숫자로",
         question="컴퓨터는 메뉴 글자를 어떻게 숫자로 바꿀까?",
-        session="3회차 전반",
-        minutes=90,
         objectives=[
             "한 단어를 2-gram과 3-gram으로 직접 나눌 수 있다.",
             "TF, DF, IDF가 각각 무엇을 세는지 표로 설명할 수 있다.",
@@ -1551,8 +1549,6 @@ def _chapter_04() -> dict:
         number="04",
         title="코사인 유사도와 식단 군집",
         question="비슷한 메뉴와 식단 묶음은 어떻게 찾을까?",
-        session="3회차 후반",
-        minutes=90,
         objectives=[
             "코사인 유사도를 벡터 방향의 가까움으로 설명할 수 있다.",
             "K-Means가 정답표 없이 중심을 옮기며 묶는 과정을 설명할 수 있다.",
@@ -1655,8 +1651,6 @@ def _chapter_05() -> dict:
         number="05",
         title="개인추천 점수 설계",
         question="개인마다 다른 추천 순위를 어떻게 만들까?",
-        session="4회차 전반",
-        minutes=90,
         objectives=[
             "추천 점수의 기준점·보너스·감점을 계산할 수 있다.",
             "같은 급식도 가상 취향에 따라 순위가 달라지는 이유를 설명할 수 있다.",
@@ -1773,8 +1767,6 @@ def _chapter_06() -> dict:
         number="06",
         title="Jupyter 추천 화면",
         question="추천 기능을 누를 수 있는 화면으로 만들 수 있을까?",
-        session="4회차 후반",
-        minutes=90,
         objectives=[
             "입력 위젯과 출력 영역의 역할을 구분할 수 있다.",
             "버튼 클릭이 추천 함수로 이어지는 흐름을 설명할 수 있다.",
@@ -1964,8 +1956,6 @@ def _chapter_07() -> dict:
         number="07",
         title="테스트와 모델 카드",
         question="추천기를 어떻게 시험하고 한계를 설명할까?",
-        session="5회차",
-        minutes=180,
         objectives=[
             "테스트의 예상·실행·판정 구조를 설명할 수 있다.",
             "입력을 바꾼 네 가지 사례로 추천 규칙을 확인할 수 있다.",
@@ -2090,8 +2080,6 @@ def _chapter_08() -> dict:
         number="08",
         title="발표와 상호 체험",
         question="결과가 아니라 과정을 어떻게 설명할까?",
-        session="6회차",
-        minutes=180,
         objectives=[
             "프로젝트를 문제→데이터→AI→결과→한계 순서로 설명할 수 있다.",
             "시연 전에 필요한 항목을 확인할 수 있다.",
@@ -2198,6 +2186,7 @@ CHAPTER_BUILDERS: tuple[Callable[[], dict], ...] = (
     _appendix_json,
     _chapter_01,
     _chapter_02,
+    _appendix_one_hot,
     _chapter_03,
     _chapter_04,
     _chapter_05,
