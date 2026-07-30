@@ -8,3 +8,12 @@ notebooks/.executed/
 jupyter_course/.ipynb_checkpoints/
 jupyter_course/chapters/.ipynb_checkpoints/
 verification/
+outputs/
+.cache/
+neis.txt
+nvidia_nim.txt
+.env
+.env.*
+runtime_data/
+mokpo_password.txt
+student_ratings*.csv

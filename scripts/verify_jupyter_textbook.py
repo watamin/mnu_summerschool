@@ -1,4 +1,6 @@
-"""Jupyter 교과서 9개 장을 각각 새 커널에서 실행해 검증한다."""
+"""Jupyter 교과서 본문과 부록을 각각 새 커널에서 실행해 검증한다."""
+
+# noqa: SIZE_OK - 장별 결과 계약표와 새 커널 실행 검증은 하나의 검증 경계다.
 
 from __future__ import annotations
 
@@ -29,14 +31,46 @@ REQUIRED_RESULT_KEYS = {
         "notebook_version",
         "packages_checked",
     },
+    "A": {
+        "value_types",
+        "second_dish",
+        "school_name",
+        "nested_date",
+        "json_is_dict",
+        "sample_rows",
+        "sample_menu",
+        "tutorial_steps",
+    },
     "01": {"source", "raw_rows", "first_keys"},
     "02": {"clean_rows", "columns", "chart_ready"},
+    "B": {
+        "training_rows",
+        "feature_name",
+        "target_name",
+        "labels",
+        "selected_food",
+        "one_hot",
+        "decoded_food",
+        "ones_count",
+        "learned_weights",
+        "predicted_rating",
+        "actual_rating",
+        "absolute_error",
+        "multi_hot",
+        "multi_hot_ones",
+        "tutorial_steps",
+    },
     "03": {
+        "cross_document_comparison",
+        "document_summaries",
+        "document_term_details",
         "similarities",
         "query",
         "document_count",
         "document_top_terms",
         "document_sources_verified",
+        "menu_similarity_ranking",
+        "toy_tfidf_table",
     },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
@@ -116,14 +150,47 @@ def _validate_chapter_result(
         and tuple(int(part) for part in item["python_version"].split(".")[:2])
         >= (3, 11)
         and item["notebook_version"].split(".", 1)[0] == "7"
-        and item["packages_checked"] >= 7,
+        and item["packages_checked"] >= 8,
+        "A": lambda item: item["value_types"] == ["str", "float", "bool"]
+        and item["second_dish"] == "미트볼로제파스타"
+        and item["school_name"] == "남악고등학교"
+        and item["nested_date"] == "20260624"
+        and item["json_is_dict"] is True
+        and item["sample_rows"] == 5
+        and "미트볼로제파스타" in item["sample_menu"]
+        and item["tutorial_steps"] == 6,
         "01": lambda item: bool(item["source"])
         and item["raw_rows"] >= 1
         and bool(item["first_keys"]),
         "02": lambda item: item["clean_rows"] >= 1
         and bool(item["columns"])
         and item["chart_ready"] is True,
-        "03": lambda item: bool(item["similarities"]) and bool(item["query"]),
+        "B": lambda item: item["training_rows"] == 8
+        and item["feature_name"] == "menu"
+        and item["target_name"] == "rating"
+        and item["labels"] == ["밥", "국", "김치", "돈까스"]
+        and item["selected_food"] == "김치"
+        and item["one_hot"] == [0, 0, 1, 0]
+        and item["decoded_food"] == item["selected_food"]
+        and item["ones_count"] == item["one_hot"].count(1) == 1
+        and item["learned_weights"] == [4.5, 3.5, 5.0, 4.0]
+        and item["predicted_rating"] == 5.0
+        and item["actual_rating"] == 4.0
+        and item["absolute_error"]
+        == abs(item["actual_rating"] - item["predicted_rating"])
+        == 1.0
+        and item["multi_hot"] == [1, 0, 1, 1]
+        and item["multi_hot_ones"] == item["multi_hot"].count(1) == 3
+        and item["tutorial_steps"] == 6,
+        "03": lambda item: bool(item["similarities"])
+        and bool(item["query"])
+        and len(item["document_summaries"]) == 3
+        and set(item["document_term_details"])
+        == {"신경망 소개", "컴퓨터 비전 소개", "윤리적이고 책임 있는 AI"}
+        and all(len(rows) >= 5 for rows in item["document_term_details"].values())
+        and len(item["cross_document_comparison"]) == 12
+        and len(item["menu_similarity_ranking"]) >= 1
+        and len(item["toy_tfidf_table"]) == 6,
         "04": lambda item: bool(item["top_similar_menu"])
         and len(item["cluster_names"]) >= 2,
         "05": lambda item: item["recommendations"] >= 1
@@ -153,7 +220,7 @@ def verify_textbook(
     timeout: int = 180,
     executed_dir: str | Path = DEFAULT_EXECUTED_DIR,
 ) -> list[dict[str, Any]]:
-    """9개 장을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
+    """교과서의 모든 장을 독립 커널에서 실행하고 장별 보고서를 반환한다."""
 
     _configure_notebook_event_loop()
     try:
@@ -186,7 +253,8 @@ def verify_textbook(
     missing = [path.name for path in paths if not path.is_file()]
     if missing:
         raise RuntimeError(
-            f"Jupyter 교과서 9개 장이 모두 필요합니다. 없는 파일: {', '.join(missing)}"
+            f"Jupyter 교과서 파일 {len(CHAPTER_FILES)}개가 모두 필요합니다. "
+            f"없는 파일: {', '.join(missing)}"
         )
 
     output_dir = Path(executed_dir)
@@ -197,6 +265,7 @@ def verify_textbook(
     try:
         for path in paths:
             notebook = nbformat.read(path, as_version=4)
+            chapter = str(notebook.metadata["jupyter_course"]["chapter"])
             started = time.perf_counter()
             try:
                 executed = NotebookClient(
@@ -213,7 +282,6 @@ def verify_textbook(
                 raise RuntimeError(f"{path.name} 새 커널 실행 실패: {exc}") from exc
             elapsed = round(time.perf_counter() - started, 2)
             result = _result_from_outputs(executed, path)
-            chapter = path.name[:2]
             _validate_chapter_result(chapter, result, path)
             executed_path = output_dir / path.name
             nbformat.write(executed, executed_path)

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "neis-meal-ai"
 version = "0.1.0"
-description = "중학생용 NEIS 개인별 급식 AI 추천기"
+description = "NEIS 급식 데이터 분석과 개인별 추천 서비스"
 requires-python = ">=3.11"
 dependencies = [
   "gradio>=4.44,<7",
@@ -17,6 +17,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ipykernel>=6.25,<8"]
+embedding = [
+  "numpy==2.2.6",
+  "scipy==1.16.3",
+  "scikit-learn==1.7.2",
+  "transformers>=4.57,<5",
+  "sentence-transformers==5.6.1",
+]
 jupyter = [
   "notebook>=7.2,<8",
   "nbclient>=0.10,<1",

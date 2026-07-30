@@ -30,7 +30,7 @@ def test_verifier_script_can_run_directly_from_project_root() -> None:
 
 
 def test_verify_textbook_rejects_missing_chapters(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeError, match="9개"):
+    with pytest.raises(RuntimeError, match="파일 11개"):
         verify_textbook(tmp_path)
 
 
@@ -77,6 +77,20 @@ def test_verifier_rejects_incomplete_or_meaningless_chapter_contracts() -> None:
     with pytest.raises(RuntimeError, match="필수 결과"):
         _validate_chapter_result("06", {"chapter": "06"}, Path("06.ipynb"))
 
+    with pytest.raises(RuntimeError, match="필수 결과"):
+        _validate_chapter_result(
+            "03",
+            {
+                "chapter": "03",
+                "similarities": [0.1],
+                "query": "파스타",
+                "document_count": 3,
+                "document_top_terms": {"신경망 소개": ["뉴런"]},
+                "document_sources_verified": True,
+            },
+            Path("03.ipynb"),
+        )
+
     with pytest.raises(RuntimeError, match="실제 콜백"):
         _validate_chapter_result(
             "06",
@@ -88,6 +102,30 @@ def test_verifier_rejects_incomplete_or_meaningless_chapter_contracts() -> None:
                 "callback_source": "남악고 NEIS 예비 데이터",
             },
             Path("06.ipynb"),
+        )
+
+    with pytest.raises(RuntimeError, match="학습 목표"):
+        _validate_chapter_result(
+            "B",
+            {
+                "chapter": "B",
+                "training_rows": 8,
+                "feature_name": "menu",
+                "target_name": "rating",
+                "labels": ["밥", "국", "김치", "돈까스"],
+                "selected_food": "김치",
+                "one_hot": [0, 0, 1, 0],
+                "decoded_food": "김치",
+                "ones_count": 1,
+                "learned_weights": [4.5, 3.5, 5.0, 4.0],
+                "predicted_rating": 5.0,
+                "actual_rating": 4.0,
+                "absolute_error": -1.0,
+                "multi_hot": [1, 0, 1, 1],
+                "multi_hot_ones": 3,
+                "tutorial_steps": 6,
+            },
+            Path("B.ipynb"),
         )
 
 
@@ -102,9 +140,14 @@ def test_verify_textbook_executes_all_chapters_in_fresh_kernels(
         executed_dir=tmp_path / "executed",
     )
 
-    assert len(reports) == 9
+    assert len(reports) == 11
     assert [report["chapter"] for report in reports] == [
-        f"{number:02d}" for number in range(9)
+        "00",
+        "A",
+        "01",
+        "02",
+        "B",
+        *[f"{number:02d}" for number in range(3, 9)],
     ]
     assert all(report["status"] == "PASS" for report in reports)
     assert all(report["code_cells"] >= 3 for report in reports)

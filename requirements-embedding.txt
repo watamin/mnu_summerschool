@@ -1,0 +1,8 @@
+# RTX GPU에서는 교사용 안내에 따라 CUDA용 PyTorch를 먼저 설치합니다.
+# 아래 버전은 Windows·Python 3.12·RTX 5080 환경에서 실제 추론을 확인했습니다.
+setuptools<82
+numpy==2.2.6
+scipy==1.16.3
+scikit-learn==1.7.2
+transformers>=4.57,<5
+sentence-transformers==5.6.1

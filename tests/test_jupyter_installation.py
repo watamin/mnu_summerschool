@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_PACKAGES = {
     "ipykernel",
     "ipywidgets",
+    "gradio",
     "matplotlib",
     "nbclient",
     "nbformat",
@@ -25,6 +26,7 @@ INSTALL_COMMANDS = (
     r".\.venv\Scripts\python.exe -m pip install -r requirements-jupyter.txt",
     r".\.venv\Scripts\python.exe -m notebook",
 )
+WEB_COMMAND = r".\.venv\Scripts\python.exe web_app.py"
 
 
 def _requirements() -> list[Requirement]:
@@ -58,6 +60,8 @@ def test_plain_markdown_guide_orders_the_commands_needed_before_jupyter() -> Non
     assert positions == sorted(positions)
     assert "가상환경" in guide
     assert "설치 전에는 Jupyter Notebook을 열 수 없습니다" in guide
+    assert "gradio" in guide.casefold()
+    assert WEB_COMMAND in guide
 
 
 def test_batch_launcher_files_are_removed() -> None:

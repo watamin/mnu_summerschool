@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# noqa: SIZE_OK - 생성 교과서 전체의 편집·실행 계약을 한 파일에서 대조한다.
+
 import json
 import os
 import subprocess
@@ -15,8 +17,10 @@ from scripts.build_jupyter_textbook import CHAPTER_FILES, build_textbook
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_CHAPTERS = (
     "00_시작하기.ipynb",
-    "01_NEIS_API와_JSON.ipynb",
+    "A_JSON_기초_튜토리얼.ipynb",
+    "01_NEIS_API_요청하기.ipynb",
     "02_급식데이터_정리와_그래프.ipynb",
+    "B_원핫_벡터_기초_튜토리얼.ipynb",
     "03_TFIDF_글자를_숫자로.ipynb",
     "04_유사도와_식단군집.ipynb",
     "05_개인추천_점수설계.ipynb",
@@ -24,6 +28,9 @@ EXPECTED_CHAPTERS = (
     "07_테스트와_모델카드.ipynb",
     "08_발표와_체험.ipynb",
 )
+API_CHAPTER = "01_NEIS_API_요청하기.ipynb"
+CLUSTER_CHAPTER = "04_유사도와_식단군집.ipynb"
+WIDGET_CHAPTER = "06_Jupyter_추천화면.ipynb"
 REQUIRED_SECTIONS = (
     "이 장에서 배울 내용",
     "생각 열기",
@@ -63,20 +70,51 @@ EXPECTED_RESULT_KEYS = {
         "source",
         "raw_rows",
         "first_keys",
-        "json_practice_menu",
         "prepared_request_url",
         "live_request_sent",
     },
+    "A": {
+        "value_types",
+        "second_dish",
+        "school_name",
+        "nested_date",
+        "json_is_dict",
+        "sample_rows",
+        "sample_menu",
+        "tutorial_steps",
+    },
     "02": {"clean_rows", "columns", "chart_ready"},
+    "B": {
+        "training_rows",
+        "feature_name",
+        "target_name",
+        "labels",
+        "selected_food",
+        "one_hot",
+        "decoded_food",
+        "ones_count",
+        "learned_weights",
+        "predicted_rating",
+        "actual_rating",
+        "absolute_error",
+        "multi_hot",
+        "multi_hot_ones",
+        "tutorial_steps",
+    },
     "03": {
         "similarities",
         "query",
         "two_grams",
         "common_idf",
+        "cross_document_comparison",
         "rare_idf",
         "document_count",
+        "document_summaries",
+        "document_term_details",
         "document_top_terms",
         "document_sources_verified",
+        "menu_similarity_ranking",
+        "toy_tfidf_table",
     },
     "04": {"top_similar_menu", "cluster_names"},
     "05": {"recommendations", "top_score", "top_reason"},
@@ -97,6 +135,12 @@ def _read_notebook(path: Path) -> dict:
 
 def _source(notebook: dict) -> str:
     return "\n".join(str(cell.get("source", "")) for cell in notebook["cells"])
+
+
+def _chapter_key(path: Path) -> str:
+    return str(
+        _read_notebook(path)["metadata"]["jupyter_course"]["chapter"]
+    )
 
 
 def _execute_code_cells(path: Path) -> dict:
@@ -121,7 +165,7 @@ def _execute_code_cells(path: Path) -> dict:
     return namespace
 
 
-def test_build_textbook_creates_nine_jupyter_notebooks(tmp_path: Path) -> None:
+def test_build_textbook_creates_eleven_jupyter_notebooks(tmp_path: Path) -> None:
     paths = build_textbook(tmp_path)
 
     assert CHAPTER_FILES == EXPECTED_CHAPTERS
@@ -270,7 +314,7 @@ def test_personalization_inquiries_change_only_one_condition(
     tmp_path: Path,
 ) -> None:
     notebooks = {
-        path.name[:2]: _read_notebook(path) for path in build_textbook(tmp_path)
+        _chapter_key(path): _read_notebook(path) for path in build_textbook(tmp_path)
     }
 
     chapter_05_exercise = next(
@@ -294,7 +338,10 @@ def test_personalization_inquiries_change_only_one_condition(
     )
 
 
-@pytest.mark.parametrize("chapter", [f"{number:02d}" for number in range(9)])
+@pytest.mark.parametrize(
+    "chapter",
+    ["00", "A", "B", *[f"{number:02d}" for number in range(1, 9)]],
+)
 def test_chapter_executes_independently_with_expected_result(
     tmp_path: Path,
     chapter: str,
@@ -311,17 +358,41 @@ def test_chapter_executes_independently_with_expected_result(
 def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     paths = build_textbook(tmp_path)
     results = {
-        path.name[:2]: _execute_code_cells(path)["chapter_result"]
+        _chapter_key(path): _execute_code_cells(path)["chapter_result"]
         for path in paths
     }
 
     assert results["00"]["sample_rows"] == 5
+    assert results["00"]["packages_checked"] == 8
+    assert results["A"]["value_types"] == ["str", "float", "bool"]
+    assert results["A"]["second_dish"] == "미트볼로제파스타"
+    assert results["A"]["school_name"] == "남악고등학교"
+    assert results["A"]["nested_date"] == "20260624"
+    assert results["A"]["json_is_dict"] is True
+    assert results["A"]["sample_rows"] == 5
+    assert "미트볼로제파스타" in results["A"]["sample_menu"]
+    assert results["A"]["tutorial_steps"] == 6
     assert results["01"]["raw_rows"] == 5
-    assert results["01"]["json_practice_menu"] == "미트볼로제파스타"
+    assert "json_practice_menu" not in results["01"]
     assert "mealServiceDietInfo" in results["01"]["prepared_request_url"]
     assert "SD_SCHUL_CODE=7140272" in results["01"]["prepared_request_url"]
     assert results["01"]["live_request_sent"] is False
     assert results["02"]["clean_rows"] == 5
+    assert results["B"]["training_rows"] == 8
+    assert results["B"]["feature_name"] == "menu"
+    assert results["B"]["target_name"] == "rating"
+    assert results["B"]["labels"] == ["밥", "국", "김치", "돈까스"]
+    assert results["B"]["selected_food"] == "김치"
+    assert results["B"]["one_hot"] == [0, 0, 1, 0]
+    assert results["B"]["decoded_food"] == "김치"
+    assert results["B"]["ones_count"] == 1
+    assert results["B"]["learned_weights"] == [4.5, 3.5, 5.0, 4.0]
+    assert results["B"]["predicted_rating"] == 5.0
+    assert results["B"]["actual_rating"] == 4.0
+    assert results["B"]["absolute_error"] == 1.0
+    assert results["B"]["multi_hot"] == [1, 0, 1, 1]
+    assert results["B"]["multi_hot_ones"] == 3
+    assert results["B"]["tutorial_steps"] == 6
     assert len(results["03"]["similarities"]) == 5
     assert results["03"]["two_grams"] == ["·파", "파스", "스타", "타·"]
     assert results["03"]["rare_idf"] > results["03"]["common_idf"]
@@ -348,8 +419,116 @@ def test_key_chapter_results_are_meaningful(tmp_path: Path) -> None:
     assert results["08"]["demo_checklist_ready"] is True
 
 
+def test_machine_learning_appendix_runs_from_features_to_error(
+    tmp_path: Path,
+) -> None:
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("B")
+    )
+    notebook = _read_notebook(chapter_path)
+    source = _source(notebook)
+    activity_cells = [
+        cell
+        for cell in notebook["cells"]
+        if cell["metadata"].get("textbook_role") == "activity"
+    ]
+
+    assert len(activity_cells) == 6
+    assert all(
+        term in source
+        for term in (
+            "특성(X)",
+            "정답(y)",
+            "원-핫 벡터",
+            "학습",
+            "예측",
+            "절대오차",
+            "멀티-핫",
+            "TF-IDF",
+        )
+    )
+
+    result = _execute_code_cells(chapter_path)["chapter_result"]
+    assert result["one_hot"].count(1) == 1
+    assert result["decoded_food"] == result["selected_food"]
+    assert result["predicted_rating"] == sum(
+        value * weight
+        for value, weight in zip(
+            result["one_hot"],
+            result["learned_weights"],
+        )
+    )
+    assert result["absolute_error"] == abs(
+        result["actual_rating"] - result["predicted_rating"]
+    )
+    assert result["multi_hot"].count(1) == 3
+
+
+def test_tfidf_chapter_traces_each_document_and_score_step_by_step(
+    tmp_path: Path,
+) -> None:
+    chapter_path = next(
+        path for path in build_textbook(tmp_path) if path.name.startswith("03")
+    )
+    source = _source(_read_notebook(chapter_path))
+
+    tutorial_signposts = (
+        "1단계. 비교할 문서 세 편 확인하기",
+        "2단계. 문서에서 분석할 한글 단어 고르기",
+        "3단계. 단어 하나의 계산 과정 따라가기",
+        "4단계. 문서별 상위 TF-IDF 결과 비교하기",
+        "5단계. 결과를 문서 내용과 연결해 해석하기",
+        "6단계. 같은 방법을 급식 메뉴에 적용하기",
+        "등장 횟수",
+        "전체 단어 수",
+        "TF-IDF 계산표",
+        "왜 이 단어의 점수가 높을까?",
+    )
+    assert all(signpost in source for signpost in tutorial_signposts)
+    assert "[가-힣]{2,}" in source
+    assert "[가-힣]{{2,}}" not in source
+
+    result = _execute_code_cells(chapter_path)["chapter_result"]
+    summaries = {
+        row["문서"]: row for row in result["document_summaries"]
+    }
+    assert summaries["신경망 소개"] == {
+        "문서": "신경망 소개",
+        "글자 수": 2827,
+        "분석 단어 수": 297,
+        "서로 다른 단어 수": 232,
+    }
+    assert summaries["컴퓨터 비전 소개"]["분석 단어 수"] == 570
+    assert summaries["윤리적이고 책임 있는 AI"]["분석 단어 수"] == 391
+
+    details = result["document_term_details"]
+    assert set(details) == {
+        "신경망 소개",
+        "컴퓨터 비전 소개",
+        "윤리적이고 책임 있는 AI",
+    }
+    expected_first_terms = {
+        "신경망 소개": ("뉴런", 6, 0.0342),
+        "컴퓨터 비전 소개": ("이미지", 18, 0.0407),
+        "윤리적이고 책임 있는 AI": ("책임", 6, 0.0260),
+    }
+    for title, (word, count, score) in expected_first_terms.items():
+        first = details[title][0]
+        assert first["단어"] == word
+        assert first["등장 횟수"] == count
+        assert first["전체 단어 수"] == summaries[title]["분석 단어 수"]
+        assert {"TF", "DF", "IDF", "TF-IDF", "계산"}.issubset(first)
+        assert first["TF-IDF"] == pytest.approx(score, abs=0.0001)
+
+    assert len(result["toy_tfidf_table"]) == 6
+    assert len(result["cross_document_comparison"]) == 12
+    assert len(result["menu_similarity_ranking"]) == 5
+    assert result["menu_similarity_ranking"][0]["날짜"] == "2026-06-24"
+    assert result["menu_similarity_ranking"][0]["유사도"] == 0.141
+
+
 def test_api_chapter_teaches_live_meals_fallback_and_date_mismatch() -> None:
-    chapter_path = PROJECT_ROOT / "jupyter_course" / "chapters" / EXPECTED_CHAPTERS[1]
+    chapter_path = PROJECT_ROOT / "jupyter_course" / "chapters" / API_CHAPTER
     source = _source(_read_notebook(chapter_path))
 
     assert "load_classroom_frame" in source
@@ -456,24 +635,32 @@ def test_widget_callback_shows_source_and_handles_bad_input(tmp_path: Path) -> N
 
 def test_cluster_and_widget_chapters_split_code_and_explain_line_groups() -> None:
     chapter_dir = PROJECT_ROOT / "jupyter_course" / "chapters"
-    cluster_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[4]))
-    widget_source = _source(_read_notebook(chapter_dir / EXPECTED_CHAPTERS[6]))
+    cluster_source = _source(_read_notebook(chapter_dir / CLUSTER_CHAPTER))
+    widget_source = _source(_read_notebook(chapter_dir / WIDGET_CHAPTER))
 
     assert "중심을 옮깁니다" in cluster_source
     assert "입력 위젯 만들기" in widget_source
     assert "버튼 콜백 연결과 화면 조립" in widget_source
 
 
-def test_jupyter_guides_exist_without_role_or_score_tables() -> None:
+def test_jupyter_guides_use_concept_sequence_without_fixed_class_schedule() -> None:
     guide_paths = [
+        PROJECT_ROOT / "README.md",
         PROJECT_ROOT / "jupyter_course" / "README.md",
         PROJECT_ROOT / "jupyter_course" / "교사용_운영안.md",
+        PROJECT_ROOT / "docs" / "교사용_운영체크리스트.md",
     ]
+    fixed_schedule_phrases = (
+        "여섯 번의 수업",
+        "분 단위 진행",
+        "중학생용",
+        "중학생을 위한",
+        "중학교 2학년",
+        *(f"## {number}회차" for number in range(1, 7)),
+    )
 
     for path in guide_paths:
         source = path.read_text(encoding="utf-8")
         assert not any(phrase in source for phrase in BANNED_STUDENT_PHRASES)
-    teacher_guide = guide_paths[1].read_text(encoding="utf-8")
-    assert sum(
-        f"## {number}회차" in teacher_guide for number in range(1, 7)
-    ) == 6
+        assert not any(phrase in source for phrase in fixed_schedule_phrases)
+    assert not (PROJECT_ROOT / "docs" / "15시간_수업지도안.md").exists()
