@@ -138,10 +138,13 @@ def test_actual_review_rejects_a_prediction_from_another_student_or_menu() -> No
     assert comparison.empty
 
 
-def test_app_contains_only_the_three_step_experiment(tmp_path: Path) -> None:
+def test_app_contains_the_experiment_and_school_food_exploration(tmp_path: Path) -> None:
     store = StudentProfileStore(tmp_path / "profiles.sqlite3", _food_pool())
     demo = create_mokpo_app(
-        SimpleNamespace(metadata={}),
+        SimpleNamespace(
+            metadata={},
+            meals=pd.DataFrame({"school_name": ["목포고등학교"]}),
+        ),
         _menus(),
         profile_store=store,
     )
@@ -159,6 +162,10 @@ def test_app_contains_only_the_three_step_experiment(tmp_path: Path) -> None:
         "오늘 점심 예상하기",
         "예측과 비교하기",
         "내 음식 30개 평가표",
+        "4. 학교 급식 탐색",
+        "학교별 시그니처 메뉴(TF-IDF)",
+        "음식 취향 기준 고등학교 추천",
+        "시그니처 메뉴와 고등학교 추천 보기",
     ):
         assert text in config
     for removed in (

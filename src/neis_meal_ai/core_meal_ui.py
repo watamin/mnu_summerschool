@@ -10,6 +10,7 @@ from .lunch_prediction import (
     predict_profile_callback,
     select_menu_row,
 )
+from .mokpo_analytics import recommend_high_schools, signature_terms
 from .mokpo_data import MokpoDataset
 from .student_profile_ui import load_profile_callback, save_profile_callback
 from .student_profiles import StudentProfileStore
@@ -44,7 +45,6 @@ def create_mokpo_app(
     *,
     profile_store: StudentProfileStore | None = None,
 ):
-    del dataset
     if profile_store is None:
         raise ValueError("학생 평가를 저장할 프로필 저장소가 필요합니다.")
     import gradio as gr
@@ -57,6 +57,10 @@ def create_mokpo_app(
         (f"{row.meal_date} 점심", str(row.menu_id))
         for row in validation_menus.itertuples()
     ]
+    school_choices = sorted(
+        dataset.meals["school_name"].dropna().astype(str).unique().tolist()
+    )
+    default_school_name = school_choices[0]
 
     with gr.Blocks(title="오늘 점심 취향 예측") as demo:
         prediction_state = gr.State({})
@@ -91,6 +95,36 @@ def create_mokpo_app(
         comparison_message = gr.Markdown("식사 후 실제 만족도를 입력하세요.")
         comparison_table = gr.Dataframe(label="예측과 실제 비교", interactive=False)
 
+        gr.Markdown("---\n## 4. 학교 급식 탐색")
+        gr.Markdown(
+            "학교별 시그니처 메뉴를 살펴보고, 좋아하는 음식으로 고등학교 급식 취향을 비교합니다.  \n"
+            "이 순위는 급식 취향만 비교하며 학교의 교육·진학 적합도를 평가하지 않습니다."
+        )
+        with gr.Row():
+            school_choice = gr.Dropdown(
+                school_choices,
+                value=default_school_name,
+                label="시그니처 메뉴를 볼 학교",
+            )
+            preference_text = gr.Textbox(
+                label="좋아하는 음식",
+                value="돈까스, 파스타, 치즈",
+                placeholder="예: 돈까스, 파스타, 치즈",
+            )
+        school_analysis_button = gr.Button(
+            "시그니처 메뉴와 고등학교 추천 보기", variant="primary"
+        )
+        school_analysis_message = gr.Markdown(
+            "학교를 고르고 좋아하는 음식을 입력한 뒤 분석을 시작하세요."
+        )
+        with gr.Row():
+            signature_table = gr.Dataframe(
+                label="학교별 시그니처 메뉴(TF-IDF)", interactive=False
+            )
+            high_school_table = gr.Dataframe(
+                label="음식 취향 기준 고등학교 추천", interactive=False
+            )
+
         def _load_profile(entered_name: object):
             return load_profile_callback(profile_store, entered_name)
 
@@ -116,6 +150,34 @@ def create_mokpo_app(
                 actual,
                 entered_name,
                 menu_id,
+            )
+
+        def _explore_school_food(
+            school_name: str, entered_preference: str
+        ) -> tuple[str, pd.DataFrame, pd.DataFrame]:
+            signatures = signature_terms(dataset.meals, school_name)
+            preference = entered_preference.strip()
+            if not preference:
+                return (
+                    "### 학교별 시그니처 메뉴\n"
+                    "왼쪽 표에서 학교 급식에 특히 자주 나온 메뉴를 확인하세요.  \n\n"
+                    "### 음식 취향 기준 고등학교 추천\n"
+                    "좋아하는 음식을 입력하면 고등학교 급식 취향 점수를 계산합니다.",
+                    signatures,
+                    pd.DataFrame(
+                        columns=["학교", "급식 취향 점수", "비교 급식 수"]
+                    ),
+                )
+            rankings, notice = recommend_high_schools(
+                dataset.meals, preference, method="tfidf"
+            )
+            return (
+                f"### {school_name}의 시그니처 메뉴\n"
+                "TF-IDF는 이 학교에서는 자주 나오고 다른 학교에서는 상대적으로 드문 메뉴를 찾습니다.  \n\n"
+                "### 음식 취향 기준 고등학교 추천\n"
+                f"{notice}",
+                signatures,
+                rankings,
             )
 
         load_button.click(
@@ -146,5 +208,11 @@ def create_mokpo_app(
             inputs=[prediction_state, actual_rating, student_name, meal_choice],
             outputs=[comparison_message, comparison_table],
             api_name="compare_actual_rating",
+        )
+        school_analysis_button.click(
+            _explore_school_food,
+            inputs=[school_choice, preference_text],
+            outputs=[school_analysis_message, signature_table, high_school_table],
+            api_name="school_signature_and_high_school_recommendation",
         )
     return demo
