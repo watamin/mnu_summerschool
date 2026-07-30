@@ -17,7 +17,7 @@ _SURVEY_COLUMNS = ["순서", "음식", "구분", "평점"]
 def load_profile_callback(
     store: StudentProfileStore, username: object
 ) -> tuple[str, pd.DataFrame]:
-    """로그인 학생의 저장된 평가표를 복원한다."""
+    """입력한 학생 이름의 저장된 평가표를 복원한다."""
 
     name = validate_student_name(username)
     survey = store.load_survey(name)
@@ -59,7 +59,7 @@ def save_profile_callback(
     if result.complete:
         state = "30개 평가를 모두 저장했습니다. 이제 오늘 점심 예상값을 확인할 수 있습니다."
     else:
-        state = "중간 저장되었습니다. 나중에 같은 이름으로 로그인해 이어서 평가할 수 있습니다."
+        state = "중간 저장되었습니다. 나중에 같은 이름을 입력해 이어서 평가할 수 있습니다."
     message = (
         f"### 저장 완료: {result.saved_count}/{result.total_questions}\n"
         f"{state} 마지막 저장: `{result.updated_at}`"

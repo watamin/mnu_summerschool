@@ -144,7 +144,6 @@ def test_app_contains_only_the_three_step_experiment(tmp_path: Path) -> None:
         SimpleNamespace(metadata={}),
         _menus(),
         profile_store=store,
-        classroom_mode=True,
     )
     config_file = demo.get_config_file()
     config = json.dumps(config_file, ensure_ascii=False, default=str)
@@ -184,5 +183,5 @@ def test_app_contains_only_the_three_step_experiment(tmp_path: Path) -> None:
         for component in config_file["components"]
         if component["props"].get("label") == "이름"
     )
-    assert name_props["interactive"] is False
-    assert name_props["placeholder"] == "로그인한 이름을 사용합니다"
+    assert name_props["interactive"] is True
+    assert name_props["placeholder"] == "이름을 입력하세요"

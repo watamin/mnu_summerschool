@@ -31,7 +31,7 @@ class SaveResult:
 
 
 def validate_student_name(name: object) -> str:
-    """로그인 사용자 이름을 프로필 이름으로 쓸 수 있게 검증한다."""
+    """화면에 입력한 이름을 프로필 이름으로 쓸 수 있게 검증한다."""
 
     normalized = str(name or "").strip()
     if _STUDENT_NAME_PATTERN.fullmatch(normalized) is None:

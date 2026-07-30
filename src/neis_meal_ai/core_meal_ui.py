@@ -12,7 +12,7 @@ from .lunch_prediction import (
 )
 from .mokpo_data import MokpoDataset
 from .student_profile_ui import load_profile_callback, save_profile_callback
-from .student_profiles import StudentProfileStore, validate_student_name
+from .student_profiles import StudentProfileStore
 
 
 def _rating_table(gradio_module: object):
@@ -43,7 +43,6 @@ def create_mokpo_app(
     validation_menus: pd.DataFrame,
     *,
     profile_store: StudentProfileStore | None = None,
-    classroom_mode: bool = False,
 ):
     del dataset
     if profile_store is None:
@@ -71,12 +70,8 @@ def create_mokpo_app(
         with gr.Row():
             student_name = gr.Textbox(
                 label="이름",
-                placeholder=(
-                    "로그인한 이름을 사용합니다"
-                    if classroom_mode
-                    else "이름을 입력하세요"
-                ),
-                interactive=not classroom_mode,
+                placeholder="이름을 입력하세요",
+                interactive=True,
             )
             load_button = gr.Button("내 평가표 불러오기")
             save_button = gr.Button("30개 평점 저장", variant="primary")
@@ -96,28 +91,17 @@ def create_mokpo_app(
         comparison_message = gr.Markdown("식사 후 실제 만족도를 입력하세요.")
         comparison_table = gr.Dataframe(label="예측과 실제 비교", interactive=False)
 
-        def _profile_name(entered_name: object, request: gr.Request) -> object:
-            return request.username if classroom_mode else entered_name
+        def _load_profile(entered_name: object):
+            return load_profile_callback(profile_store, entered_name)
 
-        def _load_profile(entered_name: object, request: gr.Request):
-            return load_profile_callback(
-                profile_store, _profile_name(entered_name, request)
-            )
+        def _save_profile(entered_name: object, table: object):
+            return save_profile_callback(profile_store, entered_name, table)
 
-        def _save_profile(
-            entered_name: object, table: object, request: gr.Request
-        ):
-            return save_profile_callback(
-                profile_store, _profile_name(entered_name, request), table
-            )
-
-        def _predict_profile(
-            entered_name: object, menu_id: object, request: gr.Request
-        ):
+        def _predict_profile(entered_name: object, menu_id: object):
             return predict_profile_callback(
                 profile_store,
                 validation_menus,
-                _profile_name(entered_name, request),
+                entered_name,
                 menu_id,
             )
 
@@ -126,17 +110,13 @@ def create_mokpo_app(
             actual: object,
             entered_name: object,
             menu_id: object,
-            request: gr.Request,
         ):
             return compare_actual_ui_callback(
                 prediction,
                 actual,
-                _profile_name(entered_name, request),
+                entered_name,
                 menu_id,
             )
-
-        for callback in (_load_profile, _save_profile, _predict_profile, _compare_actual):
-            callback.__annotations__["request"] = gr.Request
 
         load_button.click(
             _load_profile,
@@ -167,10 +147,4 @@ def create_mokpo_app(
             outputs=[comparison_message, comparison_table],
             api_name="compare_actual_rating",
         )
-        if classroom_mode:
-            def _show_authenticated_name(request: gr.Request):
-                return validate_student_name(request.username)
-
-            _show_authenticated_name.__annotations__["request"] = gr.Request
-            demo.load(_show_authenticated_name, outputs=[student_name], api_name=False)
     return demo

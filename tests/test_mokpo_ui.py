@@ -639,9 +639,8 @@ def test_mokpo_service_builds_core_app_without_optional_ai_clients(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_create_app(_dataset, _validation, *, profile_store, classroom_mode):
+    def fake_create_app(_dataset, _validation, *, profile_store):
         captured["profile_store"] = profile_store
-        captured["classroom_mode"] = classroom_mode
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
@@ -650,4 +649,3 @@ def test_mokpo_service_builds_core_app_without_optional_ai_clients(
         profile_db_path=tmp_path / "profiles.sqlite3"
     ) == "app"
     assert isinstance(captured["profile_store"], StudentProfileStore)
-    assert captured["classroom_mode"] is False
