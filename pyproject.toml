@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "neis-meal-ai"
 version = "0.1.0"
-description = "중학생용 NEIS 개인별 급식 AI 추천기"
+description = "NEIS 급식 데이터 분석과 개인별 추천 서비스"
 requires-python = ">=3.11"
 dependencies = [
   "gradio>=4.44,<7",
