@@ -12,7 +12,7 @@ Korean-language meal-data teaching project and Gradio service for Mokpo-area sch
 | `web_app.py` | Local web app backed by the textbook support loader |
 | `app.py` | Compact/Colab-compatible recommendation demo |
 
-`create_service_app()` wires validated Mokpo data, food-value analytics, `StudentProfileStore`, the text embedder, and the lazily used NVIDIA client into `create_mokpo_app()`.
+`create_service_app()` wires validated Mokpo data, the 45-food survey pool, `StudentProfileStore`, and the two-day cafeteria menu into the three-step `create_mokpo_app()` flow.
 
 ### Directory Layout
 
@@ -33,13 +33,14 @@ Korean-language meal-data teaching project and Gradio service for Mokpo-area sch
 | Compact recommendations | `recommender.py`, `service.py`, `ui.py` | matching module tests |
 | Mokpo data and food value | `mokpo_data.py`, `mokpo_analytics.py` | `test_mokpo_data.py`, `test_mokpo_analytics.py` |
 | Student profiles and factorization | `student_profiles.py`, `matrix_factorization.py`, `student_profile_ui.py` | matching profile/model tests |
-| Full Gradio service | `mokpo_ui.py`, `mokpo_service.py` | `test_mokpo_ui.py`, `test_mokpo_service.py` |
+| Core Gradio service | `core_meal_ui.py`, `mokpo_service.py` | `test_core_meal_ui.py`, `test_mokpo_service.py` |
+| Legacy extended analytics UI | `mokpo_ui.py` | `test_mokpo_ui.py` |
 | Textbook and Colab content | `scripts/build_*.py` | notebook/textbook tests and verifiers |
 
 ## Code Map
 
 - Compact path: `neis.py` fetches rows -> `cleaning.py` shapes meals -> `recommender.py` scores -> `service.py` applies live/fallback policy -> `ui.py` presents results.
-- Mokpo path: `mokpo_data.py` validates snapshots -> `mokpo_analytics.py` and `text_vectors.py` compute evidence -> `mokpo_ui.py` composes callbacks and tabs.
+- Mokpo path: `mokpo_data.py` validates snapshots -> `student_profiles.py` restores 30 ratings -> `core_meal_ui.py` predicts the selected lunch and compares the actual rating.
 - Profile path: `StudentProfileStore` persists ratings -> `matrix_factorization.py` predicts blanks -> `student_profile_ui.py` adapts callbacks.
 - App wiring: `mokpo_service.py:create_service_app()` owns dataset, profile store, embedder, NIM client, authentication, and launch mode.
 - Textbook path: builder writes ordered chapters -> freezer executes and stores outputs -> verifier reruns every chapter in a fresh kernel.

@@ -634,24 +634,20 @@ def test_mokpo_service_is_local_only_and_does_not_launch_on_import() -> None:
     assert options["inbrowser"] is True
 
 
-def test_mokpo_service_reuses_one_lazy_embedding_model(
-    monkeypatch: pytest.MonkeyPatch,
+def test_mokpo_service_builds_core_app_without_optional_ai_clients(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_create_app(
-        _dataset, _validation, *, embedder, nim_client, profile_store, classroom_mode
-    ):
-        captured["embedder"] = embedder
-        captured["nim_client"] = nim_client
+    def fake_create_app(_dataset, _validation, *, profile_store, classroom_mode):
         captured["profile_store"] = profile_store
         captured["classroom_mode"] = classroom_mode
         return "app"
 
     monkeypatch.setattr(mokpo_service, "create_mokpo_app", fake_create_app)
 
-    assert mokpo_service.create_service_app() == "app"
-    assert captured["embedder"].__class__.__name__ == "SentenceTransformerEmbedder"
-    assert captured["nim_client"].__class__.__name__ == "NvidiaNimClient"
+    assert mokpo_service.create_service_app(
+        profile_db_path=tmp_path / "profiles.sqlite3"
+    ) == "app"
     assert isinstance(captured["profile_store"], StudentProfileStore)
     assert captured["classroom_mode"] is False

@@ -16,20 +16,17 @@ for import_root in (PROJECT_ROOT, SRC_ROOT):
         sys.path.insert(0, str(import_root))
 
 from neis_meal_ai.mokpo_data import load_mokpo_dataset, load_validation_menus  # noqa: E402
+from neis_meal_ai.core_meal_ui import create_mokpo_app  # noqa: E402
 from neis_meal_ai.mokpo_analytics import global_food_values  # noqa: E402
-from neis_meal_ai.mokpo_ui import create_mokpo_app  # noqa: E402
-from neis_meal_ai.nim_chat import NvidiaNimClient  # noqa: E402
 from neis_meal_ai.student_profiles import (  # noqa: E402
     StudentProfileStore,
     validate_student_name,
 )
-from neis_meal_ai.text_vectors import SentenceTransformerEmbedder  # noqa: E402
 
 
 SCHOOL_PATH = PROJECT_ROOT / "data" / "mokpo_schools.json"
 MEAL_PATH = PROJECT_ROOT / "data" / "mokpo_meals_live.json"
 MNU_PATH = PROJECT_ROOT / "data" / "mnu_cafeteria_2026_07_30_31.json"
-NIM_KEY_PATH = PROJECT_ROOT.parent / "nvidia_nim.txt"
 PASSWORD_PATH = PROJECT_ROOT.parent / "mokpo_password.txt"
 PROFILE_DB_PATH = PROJECT_ROOT / "runtime_data" / "student_profiles.sqlite3"
 
@@ -46,8 +43,6 @@ def create_service_app(
     return create_mokpo_app(
         dataset,
         validation_menus,
-        embedder=SentenceTransformerEmbedder(),
-        nim_client=NvidiaNimClient(key_path=NIM_KEY_PATH),
         profile_store=profile_store,
         classroom_mode=classroom_mode,
     )

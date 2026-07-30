@@ -83,11 +83,7 @@ def test_create_service_app_injects_real_profile_store(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def fake_create_app(
-        _dataset, _validation, *, embedder, nim_client, profile_store, classroom_mode
-    ):
-        captured["embedder"] = embedder
-        captured["nim_client"] = nim_client
+    def fake_create_app(_dataset, _validation, *, profile_store, classroom_mode):
         captured["profile_store"] = profile_store
         captured["classroom_mode"] = classroom_mode
         return "app"
@@ -111,7 +107,7 @@ def test_create_service_app_injects_real_profile_store(
 @pytest.mark.filterwarnings(
     "ignore:The copy keyword is deprecated.*:pandas.errors.Pandas4Warning"
 )
-def test_real_gradio_login_protects_api_and_propagates_student_name(
+def test_real_gradio_login_protects_api_and_loads_named_student_profile(
     tmp_path: Path,
 ) -> None:
     password = "통합테스트암호"
@@ -143,7 +139,7 @@ def test_real_gradio_login_protects_api_and_propagates_student_name(
             verbose=False,
         )
         profile_message, profile_table = client.predict(
-            api_name="/load_student_profile"
+            "학생통합", api_name="/load_student_survey"
         )
 
         assert unauthenticated_config.status_code == 401

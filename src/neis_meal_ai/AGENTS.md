@@ -9,14 +9,16 @@
 | Mokpo analytics | `mokpo_analytics.py` | Food value, maps, collaborative prediction, feedback, evaluation |
 | Profiles | `student_profiles.py`, `matrix_factorization.py`, `student_profile_ui.py` | SQLite ratings, factorization/evaluation, profile UI callbacks |
 | Integrations | `text_vectors.py`, `nim_chat.py` | Injectable embeddings and grounded NVIDIA NIM chat |
-| Composition | `mokpo_ui.py` | Gradio tabs, callbacks, and `create_mokpo_app()` |
+| Core composition | `core_meal_ui.py` | Three-step rating, lunch prediction, and actual-comparison screen |
+| Extended composition | `mokpo_ui.py` | Legacy analytics callbacks and tabbed exploratory screen |
 
 ## Dependency Direction
 
 - `neis.py` and `mokpo_data.py` are external-data boundaries; validate before returning domain data.
 - `cleaning.py`, `recommender.py`, `text_vectors.py`, and `matrix_factorization.py` must not depend on Gradio.
 - `service.py` shapes compact UI results but delegates scoring to `recommender.py`.
-- `mokpo_ui.py` may compose analytics, profile, text, and NIM modules; those modules must not import it.
+- `core_meal_ui.py` may compose profile and text-vector modules; those modules must not import it.
+- `mokpo_ui.py` retains the extended analytics callbacks but is not the primary `mokpo_service.py` surface.
 - Keep NIM/model initialization lazy. Importing the package or building offline tests must not trigger downloads or network calls.
 
 ## Coding Conventions
@@ -39,7 +41,7 @@
 
 ## Hotspots
 
-`mokpo_ui.py` and `mokpo_analytics.py` are the largest integration files. Before editing, identify the existing callback/function and its mirrored tests; avoid unrelated cleanup. `student_profiles.py` owns SQLite behavior. `matrix_factorization.py` owns fitting/evaluation. `text_vectors.py` owns deterministic TF-IDF fallback and the optional lazy SentenceTransformer adapter.
+`mokpo_ui.py` and `mokpo_analytics.py` are the largest legacy integration files. The deployed classroom flow belongs in the smaller `core_meal_ui.py`. Before editing any surface, identify the existing callback/function and its mirrored tests; avoid unrelated cleanup. `student_profiles.py` owns SQLite behavior. `matrix_factorization.py` owns fitting/evaluation. `text_vectors.py` owns deterministic TF-IDF fallback and the optional lazy SentenceTransformer adapter.
 
 ## Tests
 

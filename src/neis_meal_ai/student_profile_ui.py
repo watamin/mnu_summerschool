@@ -57,7 +57,7 @@ def save_profile_callback(
     result = store.save_ratings(name, frame)
     restored = store.load_survey(name)
     if result.complete:
-        state = "30개 평가를 모두 저장했습니다. 이제 모둠 행렬분해에 사용할 수 있습니다."
+        state = "30개 평가를 모두 저장했습니다. 이제 오늘 점심 예상값을 확인할 수 있습니다."
     else:
         state = "중간 저장되었습니다. 나중에 같은 이름으로 로그인해 이어서 평가할 수 있습니다."
     message = (
