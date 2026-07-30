@@ -48,6 +48,26 @@ CSV_TEXT_COLUMNS = {
     "content_method",
     "feedback_tag",
 }
+NON_SIDE_DISH_TOKENS = (
+    "밥",
+    "죽",
+    "국",
+    "찌개",
+    "탕",
+    "김치",
+    "면",
+    "라면",
+    "스파게티",
+    "파스타",
+    "요구르트",
+    "우유",
+    "주스",
+    "과일",
+    "아이스크림",
+    "푸딩",
+    "젤리",
+    "샤베트",
+)
 
 
 def _csv_terms(text: str) -> tuple[str, ...]:
@@ -318,6 +338,23 @@ def global_food_values(
     for column in ("전체 TF", "IDF", "전체 데이터 가치 점수"):
         result[column] = result[column].round(4)
     return result.reset_index(drop=True)
+
+
+def high_school_side_dish_values(
+    frame: pd.DataFrame, *, top_n: int | None = 30
+) -> pd.DataFrame:
+    """고등학교 급식에서 밥·국·김치·후식류를 뺀 반찬 TF-IDF 순위를 만든다."""
+
+    high_schools = frame.loc[frame["school_kind"] == "고등학교"].copy()
+    high_schools["dishes"] = high_schools["dishes"].map(
+        lambda dishes: [
+            dish
+            for dish in dishes
+            if not any(token in str(dish) for token in NON_SIDE_DISH_TOKENS)
+        ]
+    )
+    side_dishes = high_schools.loc[high_schools["dishes"].map(bool)].copy()
+    return global_food_values(side_dishes, top_n=top_n)
 
 
 def global_food_value_explanation(values: pd.DataFrame) -> str:

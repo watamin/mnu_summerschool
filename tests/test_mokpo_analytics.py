@@ -15,6 +15,7 @@ from neis_meal_ai.mokpo_analytics import (
     food_map_coordinates,
     global_food_value_explanation,
     global_food_values,
+    high_school_side_dish_values,
     inverse_matrix_recommendations,
     meal_buddies,
     pareto_candidates,
@@ -264,6 +265,36 @@ def test_global_food_values_merge_schools_and_rank_each_food_once() -> None:
     assert kimchi["전체 데이터 가치 점수"] == pytest.approx(0.5723, abs=1e-4)
     assert kimchi["가장 많이 나온 학교"] == "가학교"
     assert kimchi["해당 학교 횟수"] == 3
+
+
+def test_high_school_side_dish_values_exclude_common_non_side_dishes() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                "school_name": "가고등학교",
+                "school_kind": "고등학교",
+                "dishes": ["잡곡밥", "된장국", "배추김치", "돈까스", "요구르트"],
+            },
+            {
+                "school_name": "나고등학교",
+                "school_kind": "고등학교",
+                "dishes": ["쌀밥", "김치찌개", "배추김치", "돈까스", "샐러드"],
+            },
+            {
+                "school_name": "다중학교",
+                "school_kind": "중학교",
+                "dishes": ["잡곡밥", "된장국", "배추김치", "돈까스"],
+            },
+        ]
+    )
+
+    result = high_school_side_dish_values(frame)
+
+    assert list(result["음식"]) == ["돈까스", "샐러드"]
+    assert set(result["전체 학교 수"]) == {2}
+    assert set(result["음식"]).isdisjoint(
+        {"잡곡밥", "쌀밥", "된장국", "김치찌개", "배추김치", "요구르트"}
+    )
 
 
 def test_global_food_value_explanation_uses_the_global_winner_numbers() -> None:

@@ -138,12 +138,18 @@ def test_actual_review_rejects_a_prediction_from_another_student_or_menu() -> No
     assert comparison.empty
 
 
-def test_app_contains_the_experiment_and_school_food_exploration(tmp_path: Path) -> None:
+def test_app_contains_the_experiment_and_high_school_side_dish_tab(tmp_path: Path) -> None:
     store = StudentProfileStore(tmp_path / "profiles.sqlite3", _food_pool())
     demo = create_mokpo_app(
         SimpleNamespace(
             metadata={},
-            meals=pd.DataFrame({"school_name": ["목포고등학교"]}),
+            meals=pd.DataFrame(
+                {
+                    "school_name": ["목포고등학교"],
+                    "school_kind": ["고등학교"],
+                    "dishes": [["돈까스"]],
+                }
+            ),
         ),
         _menus(),
         profile_store=store,
@@ -162,10 +168,9 @@ def test_app_contains_the_experiment_and_school_food_exploration(tmp_path: Path)
         "오늘 점심 예상하기",
         "예측과 비교하기",
         "내 음식 30개 평가표",
-        "4. 학교 급식 탐색",
-        "학교별 시그니처 메뉴(TF-IDF)",
-        "음식 취향 기준 고등학교 추천",
-        "시그니처 메뉴와 고등학교 추천 보기",
+        "고등학교 주요 반찬",
+        "전체 고등학교 주요 반찬(TF-IDF)",
+        "밥·국·김치·후식류를 제외한 주요 반찬",
     ):
         assert text in config
     for removed in (
@@ -175,6 +180,8 @@ def test_app_contains_the_experiment_and_school_food_exploration(tmp_path: Path)
         "모둠 피드백 분석",
         "AI 식단 실험실",
         "NVIDIA NIM 데이터 해설",
+        "학교별 시그니처 메뉴(TF-IDF)",
+        "음식 취향 기준 고등학교 추천",
     ):
         assert removed not in config
 
